@@ -1,0 +1,284 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+  RefreshControl,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import { useAuth } from '../../context/AuthContext';
+import { ticketService } from '../../services/api';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+
+const TicketListScreen = ({ navigation }) => {
+  const { user } = useAuth();
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [filters, setFilters] = useState({
+    status: null,
+    priority_id: null,
+  });
+
+  const loadTickets = useCallback(async () => {
+    try {
+      const response = await ticketService.getAll(filters);
+      if (response.success) {
+        setTickets(response.data.tickets || []);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'No se pudieron cargar los tickets');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [filters]);
+
+  useEffect(() => {
+    loadTickets();
+  }, [loadTickets]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadTickets();
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      open: '#2196F3',
+      in_progress: '#FF9800',
+      pending: '#9C27B0',
+      resolved: '#4CAF50',
+      closed: '#757575',
+    };
+    return colors[status] || '#666';
+  };
+
+  const getPriorityColor = (priorityLevel) => {
+    if (priorityLevel === 4) return '#F44336'; // Crítica
+    if (priorityLevel === 3) return '#FF9800'; // Alta
+    if (priorityLevel === 2) return '#2196F3'; // Media
+    return '#4CAF50'; // Baja
+  };
+
+  const renderTicket = ({ item }) => (
+    <TouchableOpacity
+      style={styles.ticketCard}
+      onPress={() => navigation.navigate('TicketDetail', { ticketId: item.id })}
+    >
+      <View style={styles.ticketHeader}>
+        <Text style={styles.ticketNumber}>{item.ticket_number}</Text>
+        <View
+          style={[
+            styles.statusBadge,
+            { backgroundColor: getStatusColor(item.status) },
+          ]}
+        >
+          <Text style={styles.statusText}>
+            {item.status === 'open' ? 'Abierto' :
+             item.status === 'in_progress' ? 'En Proceso' :
+             item.status === 'pending' ? 'Pendiente' :
+             item.status === 'resolved' ? 'Resuelto' : 'Cerrado'}
+          </Text>
+        </View>
+      </View>
+
+      <Text style={styles.ticketTitle}>{item.title}</Text>
+      <Text style={styles.ticketDescription} numberOfLines={2}>
+        {item.description}
+      </Text>
+
+      <View style={styles.ticketFooter}>
+        <View style={styles.ticketInfo}>
+          <View
+            style={[
+              styles.priorityBadge,
+              { backgroundColor: getPriorityColor(item.priority_level) },
+            ]}
+          >
+            <Text style={styles.priorityText}>{item.priority_name}</Text>
+          </View>
+          <Text style={styles.categoryText}>{item.category_name}</Text>
+        </View>
+        <Text style={styles.dateText}>
+          {format(new Date(item.created_at), 'dd MMM yyyy', { locale: es })}
+        </Text>
+      </View>
+
+      {item.assigned_to_name && (
+        <Text style={styles.assignedText}>
+          Asignado a: {item.assigned_to_name} {item.assigned_to_lastname}
+        </Text>
+      )}
+    </TouchableOpacity>
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#2196F3" />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Mis Tickets</Text>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => navigation.navigate('CreateTicket')}
+        >
+          <Text style={styles.addButtonText}>+ Nuevo</Text>
+        </TouchableOpacity>
+      </View>
+
+      <FlatList
+        data={tickets}
+        renderItem={renderTicket}
+        keyExtractor={(item) => item.id.toString()}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No hay tickets disponibles</Text>
+          </View>
+        }
+        contentContainerStyle={styles.listContent}
+      />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 15,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  addButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  listContent: {
+    padding: 15,
+  },
+  ticketCard: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  ticketHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  ticketNumber: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  ticketTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 5,
+  },
+  ticketDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 10,
+  },
+  ticketFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  ticketInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  priorityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  priorityText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  categoryText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  dateText: {
+    fontSize: 12,
+    color: '#999',
+  },
+  assignedText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#999',
+  },
+});
+
+export default TicketListScreen;
+

@@ -1,0 +1,1346 @@
+{
+  "info": {
+    "name": "Mesa de Servicios API",
+    "description": "Colección completa de endpoints para la API de Mesa de Servicios",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Autenticación",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@mesaservicios.com\",\n  \"password\": \"Admin123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.token) {",
+                  "        pm.collectionVariables.set(\"token\", jsonData.data.token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registro",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"usuario@example.com\",\n  \"password\": \"password123\",\n  \"first_name\": \"Juan\",\n  \"last_name\": \"Pérez\",\n  \"role\": \"user\",\n  \"phone\": \"1234567890\",\n  \"department\": \"IT\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Obtener Perfil",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar Perfil",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Juan\",\n  \"last_name\": \"Pérez\",\n  \"phone\": \"1234567890\",\n  \"department\": \"IT\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Cambiar Contraseña",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"oldpassword\",\n  \"newPassword\": \"newpassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/change-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "change-password"]
+            }
+          }
+        },
+        {
+          "name": "Recuperar Contraseña",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"usuario@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/forgot-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "forgot-password"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tickets",
+      "item": [
+        {
+          "name": "Crear Ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Problema con impresora\",\n  \"description\": \"La impresora no funciona correctamente\",\n  \"priority_id\": 2,\n  \"category_id\": 1,\n  \"incident_type_id\": 1,\n  \"department\": \"IT\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tickets",
+              "host": ["{{base_url}}"],
+              "path": ["tickets"]
+            }
+          }
+        },
+        {
+          "name": "Listar Tickets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tickets?status=open&priority_id=2&limit=10&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["tickets"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "open"
+                },
+                {
+                  "key": "priority_id",
+                  "value": "2"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener Ticket",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tickets/:id",
+              "host": ["{{base_url}}"],
+              "path": ["tickets", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Actualizar Ticket",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\",\n  \"assigned_to\": 2\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tickets/:id",
+              "host": ["{{base_url}}"],
+              "path": ["tickets", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Agregar Comentario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"Estoy trabajando en la solución\",\n  \"is_internal\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tickets/:id/comments",
+              "host": ["{{base_url}}"],
+              "path": ["tickets", ":id", "comments"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Estadísticas de Tickets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tickets/statistics?date_from=2024-01-01&date_to=2024-12-31",
+              "host": ["{{base_url}}"],
+              "path": ["tickets", "statistics"],
+              "query": [
+                {
+                  "key": "date_from",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "date_to",
+                  "value": "2024-12-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Subir Archivo Adjunto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "ticket_id",
+                  "value": "1",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/tickets/:ticketId/attachments",
+              "host": ["{{base_url}}"],
+              "path": ["tickets", ":ticketId", "attachments"],
+              "variable": [
+                {
+                  "key": "ticketId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Técnicos",
+      "item": [
+        {
+          "name": "Crear Técnico",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tecnico@example.com\",\n  \"password\": \"password123\",\n  \"first_name\": \"Carlos\",\n  \"last_name\": \"García\",\n  \"phone\": \"1234567890\",\n  \"department\": \"IT\",\n  \"specialty\": \"Hardware\",\n  \"schedule_start\": \"09:00:00\",\n  \"schedule_end\": \"18:00:00\",\n  \"max_tickets\": 10\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/technicians",
+              "host": ["{{base_url}}"],
+              "path": ["technicians"]
+            }
+          }
+        },
+        {
+          "name": "Listar Técnicos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/technicians?is_available=true",
+              "host": ["{{base_url}}"],
+              "path": ["technicians"],
+              "query": [
+                {
+                  "key": "is_available",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener Técnico",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/technicians/:id",
+              "host": ["{{base_url}}"],
+              "path": ["technicians", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Actualizar Técnico",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"specialty\": \"Software\",\n  \"is_available\": true,\n  \"max_tickets\": 15\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/technicians/:id",
+              "host": ["{{base_url}}"],
+              "path": ["technicians", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Carga de Trabajo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/technicians/:id/workload",
+              "host": ["{{base_url}}"],
+              "path": ["technicians", ":id", "workload"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Desempeño",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/technicians/:id/performance?date_from=2024-01-01&date_to=2024-12-31",
+              "host": ["{{base_url}}"],
+              "path": ["technicians", ":id", "performance"],
+              "query": [
+                {
+                  "key": "date_from",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "date_to",
+                  "value": "2024-12-31"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mis Tickets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/technicians/me/tickets",
+              "host": ["{{base_url}}"],
+              "path": ["technicians", "me", "tickets"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Base de Conocimientos",
+      "item": [
+        {
+          "name": "Crear Artículo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Cómo reiniciar la impresora\",\n  \"content\": \"Paso 1: Apagar la impresora...\",\n  \"category_id\": 1,\n  \"tags\": \"impresora, hardware, solución\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/knowledge-base",
+              "host": ["{{base_url}}"],
+              "path": ["knowledge-base"]
+            }
+          }
+        },
+        {
+          "name": "Listar Artículos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/knowledge-base?search=impresora&category_id=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["knowledge-base"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "impresora"
+                },
+                {
+                  "key": "category_id",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener Artículo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/knowledge-base/:id",
+              "host": ["{{base_url}}"],
+              "path": ["knowledge-base", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Actualizar Artículo",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Título actualizado\",\n  \"content\": \"Contenido actualizado\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/knowledge-base/:id",
+              "host": ["{{base_url}}"],
+              "path": ["knowledge-base", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Marcar como Útil",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/knowledge-base/:id/helpful",
+              "host": ["{{base_url}}"],
+              "path": ["knowledge-base", ":id", "helpful"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Feedback",
+      "item": [
+        {
+          "name": "Crear Feedback",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticket_id\": 1,\n  \"rating\": 5,\n  \"comment\": \"Excelente servicio\",\n  \"response_time_rating\": 5,\n  \"resolution_quality_rating\": 5\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/feedback",
+              "host": ["{{base_url}}"],
+              "path": ["feedback"]
+            }
+          }
+        },
+        {
+          "name": "Obtener Feedback por Ticket",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/feedback/ticket/:ticketId",
+              "host": ["{{base_url}}"],
+              "path": ["feedback", "ticket", ":ticketId"],
+              "variable": [
+                {
+                  "key": "ticketId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener Feedback por Técnico",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/feedback/technician/:technicianId?date_from=2024-01-01&date_to=2024-12-31",
+              "host": ["{{base_url}}"],
+              "path": ["feedback", "technician", ":technicianId"],
+              "query": [
+                {
+                  "key": "date_from",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "date_to",
+                  "value": "2024-12-31"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "technicianId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Estadísticas de Feedback",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/feedback/statistics?technician_id=1&date_from=2024-01-01&date_to=2024-12-31",
+              "host": ["{{base_url}}"],
+              "path": ["feedback", "statistics"],
+              "query": [
+                {
+                  "key": "technician_id",
+                  "value": "1"
+                },
+                {
+                  "key": "date_from",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "date_to",
+                  "value": "2024-12-31"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reportes",
+      "item": [
+        {
+          "name": "Reporte de Tickets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reports/tickets?date_from=2024-01-01&date_to=2024-12-31",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "tickets"],
+              "query": [
+                {
+                  "key": "date_from",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "date_to",
+                  "value": "2024-12-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reporte SLA",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reports/sla?date_from=2024-01-01&date_to=2024-12-31",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "sla"],
+              "query": [
+                {
+                  "key": "date_from",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "date_to",
+                  "value": "2024-12-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reporte de Técnicos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reports/technicians?date_from=2024-01-01&date_to=2024-12-31",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "technicians"],
+              "query": [
+                {
+                  "key": "date_from",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "date_to",
+                  "value": "2024-12-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reporte de Incidentes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reports/incidents?date_from=2024-01-01&date_to=2024-12-31",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "incidents"],
+              "query": [
+                {
+                  "key": "date_from",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "date_to",
+                  "value": "2024-12-31"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "SLA",
+      "item": [
+        {
+          "name": "Obtener Configuración SLA",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sla/config",
+              "host": ["{{base_url}}"],
+              "path": ["sla", "config"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar Configuración SLA",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"priority_id\": 1,\n  \"response_time_hours\": 24,\n  \"resolution_time_hours\": 72,\n  \"escalation_enabled\": true,\n  \"escalation_time_hours\": 12\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sla/config",
+              "host": ["{{base_url}}"],
+              "path": ["sla", "config"]
+            }
+          }
+        },
+        {
+          "name": "Verificar SLA",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sla/check",
+              "host": ["{{base_url}}"],
+              "path": ["sla", "check"]
+            }
+          }
+        },
+        {
+          "name": "Cumplimiento SLA",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sla/compliance?date_from=2024-01-01&date_to=2024-12-31",
+              "host": ["{{base_url}}"],
+              "path": ["sla", "compliance"],
+              "query": [
+                {
+                  "key": "date_from",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "date_to",
+                  "value": "2024-12-31"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notificaciones",
+      "item": [
+        {
+          "name": "Listar Notificaciones",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/notifications?is_read=false&limit=50",
+              "host": ["{{base_url}}"],
+              "path": ["notifications"],
+              "query": [
+                {
+                  "key": "is_read",
+                  "value": "false"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Marcar como Leída",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/notifications/:id/read",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", ":id", "read"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Marcar Todas como Leídas",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/notifications/read-all",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", "read-all"]
+            }
+          }
+        },
+        {
+          "name": "Eliminar Notificación",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/notifications/:id",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Categorías",
+      "item": [
+        {
+          "name": "Crear Categoría",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nueva Categoría\",\n  \"description\": \"Descripción de la categoría\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/categories",
+              "host": ["{{base_url}}"],
+              "path": ["categories"]
+            }
+          }
+        },
+        {
+          "name": "Listar Categorías",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/categories",
+              "host": ["{{base_url}}"],
+              "path": ["categories"]
+            }
+          }
+        },
+        {
+          "name": "Obtener Categoría",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/categories/:id",
+              "host": ["{{base_url}}"],
+              "path": ["categories", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Actualizar Categoría",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Categoría Actualizada\",\n  \"description\": \"Nueva descripción\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/categories/:id",
+              "host": ["{{base_url}}"],
+              "path": ["categories", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Eliminar Categoría",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/categories/:id",
+              "host": ["{{base_url}}"],
+              "path": ["categories", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Usuarios",
+      "item": [
+        {
+          "name": "Listar Usuarios",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users?role=technician&is_active=true",
+              "host": ["{{base_url}}"],
+              "path": ["users"],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "technician"
+                },
+                {
+                  "key": "is_active",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener Usuario",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/:id",
+              "host": ["{{base_url}}"],
+              "path": ["users", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Actualizar Usuario",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Nombre Actualizado\",\n  \"last_name\": \"Apellido Actualizado\",\n  \"is_active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users/:id",
+              "host": ["{{base_url}}"],
+              "path": ["users", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Eliminar Usuario",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/:id",
+              "host": ["{{base_url}}"],
+              "path": ["users", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": ["{{base_url}}"],
+          "path": ["health"]
+        }
+      }
+    }
+  ]
+}
+
