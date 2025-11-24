@@ -1,35 +1,14 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useState, useContext } from 'react';
 import { authService } from '../services/api';
+import { setAuthToken } from '../services/api';
 
 const AuthContext = createContext({});
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    loadStoredAuth();
-  }, []);
-
-  const loadStoredAuth = async () => {
-    try {
-      const storedToken = await AsyncStorage.getItem('token');
-      const storedUser = await AsyncStorage.getItem('user');
-
-      if (storedToken && storedUser) {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
-        setIsAuthenticated(true);
-      }
-    } catch (error) {
-      console.error('Error loading stored auth:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const login = async (email, password) => {
     try {
@@ -38,9 +17,7 @@ export const AuthProvider = ({ children }) => {
       if (response.success && response.data) {
         const { token: newToken, user: userData } = response.data;
         
-        await AsyncStorage.setItem('token', newToken);
-        await AsyncStorage.setItem('user', JSON.stringify(userData));
-        
+        setAuthToken(newToken);
         setToken(newToken);
         setUser(userData);
         setIsAuthenticated(true);
@@ -65,16 +42,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = async () => {
-    try {
-      await AsyncStorage.removeItem('token');
-      await AsyncStorage.removeItem('user');
-      setToken(null);
-      setUser(null);
-      setIsAuthenticated(false);
-    } catch (error) {
-      console.error('Error al cerrar sesión:', error);
-    }
+  const logout = () => {
+    setAuthToken(null);
+    setToken(null);
+    setUser(null);
+    setIsAuthenticated(false);
   };
 
   const updateUser = async (profileData) => {
@@ -82,7 +54,6 @@ export const AuthProvider = ({ children }) => {
       const response = await authService.updateProfile(profileData);
       if (response.success && response.data) {
         const updatedUser = response.data.user;
-        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
         setUser(updatedUser);
         return { success: true, data: updatedUser };
       }
@@ -98,7 +69,6 @@ export const AuthProvider = ({ children }) => {
       const response = await authService.getProfile();
       if (response.success && response.data) {
         const userData = response.data.user;
-        await AsyncStorage.setItem('user', JSON.stringify(userData));
         setUser(userData);
         return userData;
       }

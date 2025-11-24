@@ -77,14 +77,6 @@ const KnowledgeBaseScreen = ({ navigation }) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Base de Conocimientos</Text>
-        {user?.role !== 'user' && (
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => navigation.navigate('CreateArticle')}
-          >
-            <Text style={styles.addButtonText}>+ Nuevo</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       <View style={styles.searchContainer}>

@@ -92,16 +92,28 @@ const CreateTicketScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
+      // Primero crear el ticket
       const result = await ticketService.create(formData);
       
-      if (result.success) {
+      if (result.success && result.data?.ticket?.id) {
+        const ticketId = result.data.ticket.id;
+        
         // Subir archivos adjuntos si hay
         if (attachments.length > 0) {
           for (const attachment of attachments) {
             try {
-              await ticketService.uploadAttachment(result.data.ticket.id, attachment);
+              const fileExtension = attachment.uri.split('.').pop();
+              const fileType = attachment.type || attachment.mimeType || 'image/jpeg';
+              const fileName = attachment.name || attachment.fileName || `attachment_${Date.now()}.${fileExtension}`;
+              
+              await ticketService.uploadAttachment(ticketId, {
+                uri: attachment.uri,
+                type: fileType,
+                name: fileName,
+              });
             } catch (error) {
               console.error('Error uploading attachment:', error);
+              // Continuar con los demás archivos aunque uno falle
             }
           }
         }
@@ -113,7 +125,8 @@ const CreateTicketScreen = ({ navigation }) => {
         Alert.alert('Error', result.message || 'Error al crear ticket');
       }
     } catch (error) {
-      Alert.alert('Error', 'Error de conexión. Verifica tu conexión a internet.');
+      console.error('Error creating ticket:', error);
+      Alert.alert('Error', error.message || 'Error de conexión. Verifica tu conexión a internet.');
     } finally {
       setLoading(false);
     }

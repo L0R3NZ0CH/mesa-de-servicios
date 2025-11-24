@@ -1,6 +1,18 @@
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config/api';
+
+// Variable global para almacenar el token en memoria
+let authToken = null;
+
+// Función para establecer el token
+export const setAuthToken = (token) => {
+  authToken = token;
+};
+
+// Función para obtener el token
+export const getAuthToken = () => {
+  return authToken;
+};
 
 // Crear instancia de axios
 const api = axios.create({
@@ -13,10 +25,9 @@ const api = axios.create({
 
 // Interceptor para agregar token a las peticiones
 api.interceptors.request.use(
-  async (config) => {
-    const token = await AsyncStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+  (config) => {
+    if (authToken) {
+      config.headers.Authorization = `Bearer ${authToken}`;
     }
     return config;
   },
@@ -28,11 +39,10 @@ api.interceptors.request.use(
 // Interceptor para manejar errores de respuesta
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
+  (error) => {
     if (error.response?.status === 401) {
       // Token expirado o inválido
-      await AsyncStorage.removeItem('token');
-      await AsyncStorage.removeItem('user');
+      authToken = null;
     }
     return Promise.reject(error);
   }
@@ -114,10 +124,10 @@ export const ticketService = {
     const formData = new FormData();
     formData.append('file', {
       uri: file.uri,
-      type: file.type,
-      name: file.name,
+      type: file.type || 'image/jpeg',
+      name: file.name || 'attachment.jpg',
     });
-    formData.append('ticket_id', ticketId);
+    formData.append('ticket_id', ticketId.toString());
 
     const response = await api.post(`/tickets/${ticketId}/attachments`, formData, {
       headers: {

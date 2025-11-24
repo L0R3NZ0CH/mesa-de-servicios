@@ -24,6 +24,9 @@ import KnowledgeBaseScreen from './screens/KnowledgeBase/KnowledgeBaseScreen';
 
 // Profile
 import ProfileScreen from './screens/Profile/ProfileScreen';
+import EditProfileScreen from './screens/Profile/EditProfileScreen';
+import ChangePasswordScreen from './screens/Profile/ChangePasswordScreen';
+import NotificationsScreen from './screens/Profile/NotificationsScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -99,6 +102,21 @@ const MainStack = () => (
       name="TicketDetail"
       component={TicketDetailScreen}
       options={{ title: 'Detalle del Ticket' }}
+    />
+    <Stack.Screen
+      name="EditProfile"
+      component={EditProfileScreen}
+      options={{ title: 'Editar Perfil' }}
+    />
+    <Stack.Screen
+      name="ChangePassword"
+      component={ChangePasswordScreen}
+      options={{ title: 'Cambiar Contraseña' }}
+    />
+    <Stack.Screen
+      name="Notifications"
+      component={NotificationsScreen}
+      options={{ title: 'Notificaciones' }}
     />
   </Stack.Navigator>
 );
