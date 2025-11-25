@@ -78,7 +78,7 @@ const TicketDetailScreen = ({ route, navigation }) => {
 
   const handleUpdateStatus = async (newStatus, statusLabel) => {
     const message = `¿Estás seguro de marcar este ticket como "${statusLabel}"?`;
-    
+
     if (window.confirm(message)) {
       setSubmitting(true);
       try {
