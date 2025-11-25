@@ -1,33 +1,46 @@
-import React from 'react';
-import { Text } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { StatusBar } from 'expo-status-bar';
+import React from "react";
+import { Text, View, ActivityIndicator } from "react-native";
+import { NavigationContainer } from "@react-navigation/native";
+import { createStackNavigator } from "@react-navigation/stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { StatusBar } from "expo-status-bar";
 
 // Auth Screens
-import LoginScreen from './screens/Auth/LoginScreen';
-import RegisterScreen from './screens/Auth/RegisterScreen';
-import ForgotPasswordScreen from './screens/Auth/ForgotPasswordScreen';
+import LoginScreen from "./screens/Auth/LoginScreen";
+import RegisterScreen from "./screens/Auth/RegisterScreen";
+import ForgotPasswordScreen from "./screens/Auth/ForgotPasswordScreen";
 
 // Dashboard
-import DashboardScreen from './screens/Dashboard/DashboardScreen';
+import DashboardScreen from "./screens/Dashboard/DashboardScreen";
 
 // Ticket Screens
-import TicketListScreen from './screens/Tickets/TicketListScreen';
-import CreateTicketScreen from './screens/Tickets/CreateTicketScreen';
-import TicketDetailScreen from './screens/Tickets/TicketDetailScreen';
+import TicketListScreen from "./screens/Tickets/TicketListScreen";
+import CreateTicketScreen from "./screens/Tickets/CreateTicketScreen";
+import TicketDetailScreen from "./screens/Tickets/TicketDetailScreen";
 
 // Knowledge Base
-import KnowledgeBaseScreen from './screens/KnowledgeBase/KnowledgeBaseScreen';
-import ArticleDetailScreen from './screens/KnowledgeBase/ArticleDetailScreen';
+import KnowledgeBaseScreen from "./screens/KnowledgeBase/KnowledgeBaseScreen";
+import ArticleDetailScreen from "./screens/KnowledgeBase/ArticleDetailScreen";
 
 // Profile
-import ProfileScreen from './screens/Profile/ProfileScreen';
-import EditProfileScreen from './screens/Profile/EditProfileScreen';
-import ChangePasswordScreen from './screens/Profile/ChangePasswordScreen';
-import NotificationsScreen from './screens/Profile/NotificationsScreen';
+import ProfileScreen from "./screens/Profile/ProfileScreen";
+import EditProfileScreen from "./screens/Profile/EditProfileScreen";
+import ChangePasswordScreen from "./screens/Profile/ChangePasswordScreen";
+import NotificationsScreen from "./screens/Profile/NotificationsScreen";
+
+// Admin Screens
+import UsersScreen from "./screens/Admin/UsersScreen";
+import ReportsScreen from "./screens/Admin/ReportsScreen";
+import CategoriesScreen from "./screens/Admin/CategoriesScreen";
+import TechniciansScreen from "./screens/Admin/TechniciansScreen";
+import SLAConfigScreen from "./screens/Admin/SLAConfigScreen";
+
+// Knowledge Base
+import CreateArticleScreen from "./screens/KnowledgeBase/CreateArticleScreen";
+
+// Technician Screens
+import TechnicianDashboardScreen from "./screens/Technician/TechnicianDashboardScreen";
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -42,20 +55,22 @@ const AuthStack = () => (
 
 const MainTabs = () => {
   const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const isTechnician = user?.role === "technician";
 
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: '#2196F3',
-        tabBarInactiveTintColor: '#666',
+        tabBarActiveTintColor: "#2196F3",
+        tabBarInactiveTintColor: "#666",
         headerShown: false,
       }}
     >
       <Tab.Screen
         name="Dashboard"
-        component={DashboardScreen}
+        component={isTechnician ? TechnicianDashboardScreen : DashboardScreen}
         options={{
-          tabBarLabel: 'Inicio',
+          tabBarLabel: "Inicio",
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 20 }}>🏠</Text>,
         }}
       />
@@ -63,7 +78,7 @@ const MainTabs = () => {
         name="TicketList"
         component={TicketListScreen}
         options={{
-          tabBarLabel: 'Tickets',
+          tabBarLabel: "Tickets",
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 20 }}>🎫</Text>,
         }}
       />
@@ -71,15 +86,25 @@ const MainTabs = () => {
         name="KnowledgeBase"
         component={KnowledgeBaseScreen}
         options={{
-          tabBarLabel: 'Base de Conocimientos',
+          tabBarLabel: "Conocimientos",
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 20 }}>📚</Text>,
         }}
       />
+      {isAdmin && (
+        <Tab.Screen
+          name="Reports"
+          component={ReportsScreen}
+          options={{
+            tabBarLabel: "Reportes",
+            tabBarIcon: ({ color }) => <Text style={{ fontSize: 20 }}>📊</Text>,
+          }}
+        />
+      )}
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarLabel: 'Perfil',
+          tabBarLabel: "Perfil",
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 20 }}>👤</Text>,
         }}
       />
@@ -97,41 +122,88 @@ const MainStack = () => (
     <Stack.Screen
       name="CreateTicket"
       component={CreateTicketScreen}
-      options={{ title: 'Crear Ticket' }}
+      options={{ title: "Crear Ticket" }}
     />
     <Stack.Screen
       name="TicketDetail"
       component={TicketDetailScreen}
-      options={{ title: 'Detalle del Ticket' }}
+      options={{ title: "Detalle del Ticket" }}
     />
     <Stack.Screen
       name="ArticleDetail"
       component={ArticleDetailScreen}
-      options={{ title: 'Artículo' }}
+      options={{ title: "Artículo" }}
     />
     <Stack.Screen
       name="EditProfile"
       component={EditProfileScreen}
-      options={{ title: 'Editar Perfil' }}
+      options={{ title: "Editar Perfil" }}
     />
     <Stack.Screen
       name="ChangePassword"
       component={ChangePasswordScreen}
-      options={{ title: 'Cambiar Contraseña' }}
+      options={{ title: "Cambiar Contraseña" }}
     />
     <Stack.Screen
       name="Notifications"
       component={NotificationsScreen}
-      options={{ title: 'Notificaciones' }}
+      options={{ title: "Notificaciones" }}
+    />
+    <Stack.Screen
+      name="Users"
+      component={UsersScreen}
+      options={{ title: "Gestión de Usuarios" }}
+    />
+    <Stack.Screen
+      name="Categories"
+      component={CategoriesScreen}
+      options={{ title: "Gestión de Categorías" }}
+    />
+    <Stack.Screen
+      name="Technicians"
+      component={TechniciansScreen}
+      options={{ title: "Gestión de Técnicos" }}
+    />
+    <Stack.Screen
+      name="SLAConfig"
+      component={SLAConfigScreen}
+      options={{ title: "Configuración SLA" }}
+    />
+    <Stack.Screen
+      name="CreateArticle"
+      component={CreateArticleScreen}
+      options={{ title: "Crear Artículo" }}
     />
   </Stack.Navigator>
 );
 
 const AppNavigator = () => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, initializing } = useAuth();
 
-  if (loading) {
-    return null; // O un componente de carga
+  // Mostrar splash screen mientras carga la sesión guardada
+  if (loading || initializing) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "#2196F3",
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 24,
+            fontWeight: "bold",
+            color: "#fff",
+            marginBottom: 20,
+          }}
+        >
+          Mesa de Servicios
+        </Text>
+        <ActivityIndicator size="large" color="#fff" />
+      </View>
+    );
   }
 
   return (
