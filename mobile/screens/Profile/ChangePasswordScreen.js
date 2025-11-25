@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -7,16 +7,16 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
-} from 'react-native';
-import { useAuth } from '../../context/AuthContext';
-import { authService } from '../../services/api';
+} from "react-native";
+import { useAuth } from "../../context/AuthContext";
+import { authService } from "../../services/api";
 
 const ChangePasswordScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
 
   const handleChangePassword = async () => {
@@ -25,17 +25,17 @@ const ChangePasswordScreen = ({ navigation }) => {
       !formData.newPassword ||
       !formData.confirmPassword
     ) {
-      alert('Por favor completa todos los campos');
+      alert("Por favor completa todos los campos");
       return;
     }
 
     if (formData.newPassword !== formData.confirmPassword) {
-      alert('Las contraseñas no coinciden');
+      alert("Las contraseñas no coinciden");
       return;
     }
 
     if (formData.newPassword.length < 6) {
-      alert('La contraseña debe tener al menos 6 caracteres');
+      alert("La contraseña debe tener al menos 6 caracteres");
       return;
     }
 
@@ -47,18 +47,18 @@ const ChangePasswordScreen = ({ navigation }) => {
       );
 
       if (result.success) {
-        alert('Contraseña actualizada exitosamente');
+        alert("Contraseña actualizada exitosamente");
         setFormData({
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: '',
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
         });
         navigation.goBack();
       } else {
-        alert(result.message || 'Error al cambiar contraseña');
+        alert(result.message || "Error al cambiar contraseña");
       }
     } catch (error) {
-      alert('Error de conexión. Verifica tu conexión a internet.');
+      alert("Error de conexión. Verifica tu conexión a internet.");
     } finally {
       setLoading(false);
     }
@@ -69,7 +69,10 @@ const ChangePasswordScreen = ({ navigation }) => {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+    >
       <View style={styles.form}>
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Contraseña Actual *</Text>
@@ -77,7 +80,7 @@ const ChangePasswordScreen = ({ navigation }) => {
             style={styles.input}
             placeholder="••••••••"
             value={formData.currentPassword}
-            onChangeText={(value) => updateField('currentPassword', value)}
+            onChangeText={(value) => updateField("currentPassword", value)}
             secureTextEntry
             autoCapitalize="none"
           />
@@ -89,7 +92,7 @@ const ChangePasswordScreen = ({ navigation }) => {
             style={styles.input}
             placeholder="••••••••"
             value={formData.newPassword}
-            onChangeText={(value) => updateField('newPassword', value)}
+            onChangeText={(value) => updateField("newPassword", value)}
             secureTextEntry
             autoCapitalize="none"
           />
@@ -101,7 +104,7 @@ const ChangePasswordScreen = ({ navigation }) => {
             style={styles.input}
             placeholder="••••••••"
             value={formData.confirmPassword}
-            onChangeText={(value) => updateField('confirmPassword', value)}
+            onChangeText={(value) => updateField("confirmPassword", value)}
             secureTextEntry
             autoCapitalize="none"
           />
@@ -126,7 +129,10 @@ const ChangePasswordScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
+  },
+  scrollContent: {
+    paddingBottom: 30,
   },
   form: {
     padding: 15,
@@ -136,32 +142,32 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     padding: 15,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
   },
   button: {
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
     borderRadius: 8,
     padding: 15,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 10,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
 

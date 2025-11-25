@@ -195,7 +195,10 @@ const CreateTicketScreen = ({ navigation, route }) => {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+    >
       <View style={styles.form}>
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Título *</Text>
@@ -327,6 +330,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
+  },
+  scrollContent: {
+    paddingBottom: 30,
   },
   form: {
     padding: 15,

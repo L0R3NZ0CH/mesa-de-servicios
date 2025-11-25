@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,10 +7,10 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
-} from 'react-native';
-import { notificationService } from '../../services/api';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+} from "react-native";
+import { notificationService } from "../../services/api";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 const NotificationsScreen = ({ navigation }) => {
   const [notifications, setNotifications] = useState([]);
@@ -31,7 +31,7 @@ const NotificationsScreen = ({ navigation }) => {
         setNotifications(response.data.notifications || []);
       }
     } catch (error) {
-      console.error('Error loading notifications:', error);
+      console.error("Error loading notifications:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -48,7 +48,7 @@ const NotificationsScreen = ({ navigation }) => {
       await notificationService.markAsRead(id);
       loadNotifications();
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      console.error("Error marking notification as read:", error);
     }
   };
 
@@ -57,7 +57,7 @@ const NotificationsScreen = ({ navigation }) => {
       await notificationService.delete(id);
       loadNotifications();
     } catch (error) {
-      console.error('Error deleting notification:', error);
+      console.error("Error deleting notification:", error);
     }
   };
 
@@ -73,7 +73,7 @@ const NotificationsScreen = ({ navigation }) => {
       <Text style={styles.notificationMessage}>{item.message}</Text>
       <View style={styles.notificationFooter}>
         <Text style={styles.notificationDate}>
-          {format(new Date(item.created_at), 'dd MMM yyyy HH:mm', {
+          {format(new Date(item.created_at), "dd MMM yyyy HH:mm", {
             locale: es,
           })}
         </Text>
@@ -107,7 +107,7 @@ const NotificationsScreen = ({ navigation }) => {
                 await notificationService.markAllAsRead();
                 loadNotifications();
               } catch (error) {
-                console.error('Error marking all as read:', error);
+                console.error("Error marking all as read:", error);
               }
             }}
           >
@@ -139,46 +139,47 @@ const NotificationsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
   centerContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
+    borderBottomColor: "#ddd",
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 10,
   },
   markAllButton: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
     borderRadius: 8,
   },
   markAllButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   listContent: {
     padding: 15,
+    paddingBottom: 100,
   },
   notificationCard: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     padding: 15,
     marginBottom: 15,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -186,57 +187,57 @@ const styles = StyleSheet.create({
   },
   unreadCard: {
     borderLeftWidth: 4,
-    borderLeftColor: '#2196F3',
+    borderLeftColor: "#2196F3",
   },
   notificationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
   notificationTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     flex: 1,
   },
   unreadDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
   },
   notificationMessage: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginBottom: 10,
     lineHeight: 20,
   },
   notificationFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   notificationDate: {
     fontSize: 12,
-    color: '#999',
+    color: "#999",
   },
   deleteButton: {
     paddingVertical: 4,
     paddingHorizontal: 8,
   },
   deleteButtonText: {
-    color: '#F44336',
+    color: "#F44336",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   emptyContainer: {
     padding: 40,
-    alignItems: 'center',
+    alignItems: "center",
   },
   emptyText: {
     fontSize: 16,
-    color: '#999',
+    color: "#999",
   },
 });
 

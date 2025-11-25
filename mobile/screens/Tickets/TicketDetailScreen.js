@@ -119,7 +119,10 @@ const TicketDetailScreen = ({ route, navigation }) => {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+    >
       <View style={styles.header}>
         <Text style={styles.ticketNumber}>{ticket.ticket_number}</Text>
         <View
@@ -269,6 +272,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
+  },
+  scrollContent: {
+    paddingBottom: 30,
   },
   centerContainer: {
     flex: 1,
