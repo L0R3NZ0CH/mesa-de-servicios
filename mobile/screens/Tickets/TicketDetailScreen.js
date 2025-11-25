@@ -356,16 +356,22 @@ const TicketDetailScreen = ({ route, navigation }) => {
           </TouchableOpacity>
         )}
 
-        {can.createFeedback && ticket.status === "resolved" && (
-          <TouchableOpacity
-            style={styles.feedbackButton}
-            onPress={() =>
-              navigation.navigate("CreateFeedback", { ticketId: ticket.id })
-            }
-          >
-            <Text style={styles.feedbackButtonText}>⭐ Dar Feedback</Text>
-          </TouchableOpacity>
-        )}
+        {can.createFeedback &&
+          (ticket.status === "resolved" || ticket.status === "closed") && (
+            <TouchableOpacity
+              style={styles.feedbackButton}
+              onPress={() =>
+                navigation.navigate("CreateFeedback", {
+                  ticketId: ticket.id,
+                  ticketNumber: ticket.ticket_number,
+                })
+              }
+            >
+              <Text style={styles.feedbackButtonText}>
+                ⭐ Calificar Servicio
+              </Text>
+            </TouchableOpacity>
+          )}
       </View>
     </ScrollView>
   );

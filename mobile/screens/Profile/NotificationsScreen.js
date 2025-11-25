@@ -61,10 +61,30 @@ const NotificationsScreen = ({ navigation }) => {
     }
   };
 
+  const handleNotificationPress = async (notification) => {
+    // Marcar como leída
+    if (!notification.is_read) {
+      await handleMarkAsRead(notification.id);
+    }
+
+    // Navegar según el tipo de notificación
+    if (notification.type === "feedback_request" && notification.ticket_id) {
+      navigation.navigate("CreateFeedback", {
+        ticketId: notification.ticket_id,
+        ticketNumber:
+          notification.ticket_number || `#${notification.ticket_id}`,
+      });
+    } else if (notification.ticket_id) {
+      navigation.navigate("TicketDetail", {
+        ticketId: notification.ticket_id,
+      });
+    }
+  };
+
   const renderNotification = ({ item }) => (
     <TouchableOpacity
       style={[styles.notificationCard, !item.is_read && styles.unreadCard]}
-      onPress={() => !item.is_read && handleMarkAsRead(item.id)}
+      onPress={() => handleNotificationPress(item)}
     >
       <View style={styles.notificationHeader}>
         <Text style={styles.notificationTitle}>{item.title}</Text>

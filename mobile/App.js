@@ -18,6 +18,7 @@ import DashboardScreen from "./screens/Dashboard/DashboardScreen";
 import TicketListScreen from "./screens/Tickets/TicketListScreen";
 import CreateTicketScreen from "./screens/Tickets/CreateTicketScreen";
 import TicketDetailScreen from "./screens/Tickets/TicketDetailScreen";
+import CreateFeedbackScreen from "./screens/Tickets/CreateFeedbackScreen";
 
 // Knowledge Base
 import KnowledgeBaseScreen from "./screens/KnowledgeBase/KnowledgeBaseScreen";
@@ -135,6 +136,11 @@ const MainStack = () => (
       name="TicketDetail"
       component={TicketDetailScreen}
       options={{ title: "Detalle del Ticket" }}
+    />
+    <Stack.Screen
+      name="CreateFeedback"
+      component={CreateFeedbackScreen}
+      options={{ title: "Calificar Servicio" }}
     />
     <Stack.Screen
       name="ArticleDetail"
