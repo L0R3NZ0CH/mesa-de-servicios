@@ -76,6 +76,29 @@ const TicketDetailScreen = ({ route, navigation }) => {
     }
   };
 
+  const handleUpdateStatus = async (newStatus, statusLabel) => {
+    const message = `¿Estás seguro de marcar este ticket como "${statusLabel}"?`;
+    
+    if (window.confirm(message)) {
+      setSubmitting(true);
+      try {
+        const result = await ticketService.update(ticketId, {
+          status: newStatus,
+        });
+        if (result.success) {
+          await loadTicket();
+          window.alert(`Ticket actualizado a "${statusLabel}"`);
+        } else {
+          Alert.alert("Error", result.message || "Error al actualizar ticket");
+        }
+      } catch (error) {
+        Alert.alert("Error", "Error de conexión");
+      } finally {
+        setSubmitting(false);
+      }
+    }
+  };
+
   const canEditTicket = () => {
     // Admin puede editar cualquier ticket
     if (can.updateAnyTicket) return true;
@@ -86,6 +109,17 @@ const TicketDetailScreen = ({ route, navigation }) => {
 
     // Usuario puede editar sus propios tickets si están abiertos
     if (ticket?.created_by === user?.id && ticket?.status === "open")
+      return true;
+
+    return false;
+  };
+
+  const canChangeStatus = () => {
+    // Admin puede cambiar cualquier estado
+    if (can.updateAnyTicket) return true;
+
+    // Técnico puede cambiar estado de tickets asignados
+    if (can.updateAssignedTicket && ticket?.assigned_to === user?.id)
       return true;
 
     return false;
@@ -240,6 +274,75 @@ const TicketDetailScreen = ({ route, navigation }) => {
               <Text style={styles.commentButtonText}>Enviar</Text>
             </TouchableOpacity>
           </View>
+        )}
+
+        {/* Botones de cambio de estado */}
+        {canChangeStatus() && ticket.status === "open" && (
+          <TouchableOpacity
+            style={[styles.statusButton, { backgroundColor: "#FF9800" }]}
+            onPress={() => handleUpdateStatus("in_progress", "En Proceso")}
+            disabled={submitting}
+          >
+            <Text style={styles.statusButtonText}>▶️ Tomar Ticket</Text>
+          </TouchableOpacity>
+        )}
+
+        {canChangeStatus() && ticket.status === "in_progress" && (
+          <View style={styles.statusButtonsRow}>
+            <TouchableOpacity
+              style={[
+                styles.statusButton,
+                styles.halfButton,
+                { backgroundColor: "#9C27B0" },
+              ]}
+              onPress={() => handleUpdateStatus("pending", "Pendiente")}
+              disabled={submitting}
+            >
+              <Text style={styles.statusButtonText}>⏸️ Pendiente</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.statusButton,
+                styles.halfButton,
+                { backgroundColor: "#4CAF50" },
+              ]}
+              onPress={() => handleUpdateStatus("resolved", "Resuelto")}
+              disabled={submitting}
+            >
+              <Text style={styles.statusButtonText}>✅ Resolver</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {canChangeStatus() && ticket.status === "pending" && (
+          <TouchableOpacity
+            style={[styles.statusButton, { backgroundColor: "#FF9800" }]}
+            onPress={() => handleUpdateStatus("in_progress", "En Proceso")}
+            disabled={submitting}
+          >
+            <Text style={styles.statusButtonText}>▶️ Continuar</Text>
+          </TouchableOpacity>
+        )}
+
+        {canChangeStatus() && ticket.status === "resolved" && (
+          <TouchableOpacity
+            style={[styles.statusButton, { backgroundColor: "#757575" }]}
+            onPress={() => handleUpdateStatus("closed", "Cerrado")}
+            disabled={submitting}
+          >
+            <Text style={styles.statusButtonText}>🔒 Cerrar Ticket</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Botón para reabrir tickets cerrados (solo admin) */}
+        {can.updateAnyTicket && ticket.status === "closed" && (
+          <TouchableOpacity
+            style={[styles.statusButton, { backgroundColor: "#2196F3" }]}
+            onPress={() => handleUpdateStatus("open", "Abierto")}
+            disabled={submitting}
+          >
+            <Text style={styles.statusButtonText}>🔓 Reabrir Ticket</Text>
+          </TouchableOpacity>
         )}
 
         {canEditTicket() && (
@@ -421,6 +524,25 @@ const styles = StyleSheet.create({
   commentButtonText: {
     color: "#fff",
     fontWeight: "600",
+  },
+  statusButton: {
+    padding: 15,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  statusButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  statusButtonsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
+  halfButton: {
+    width: "48%",
   },
   editButton: {
     backgroundColor: "#FF9800",
