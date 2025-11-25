@@ -47,6 +47,7 @@ import CreateArticleScreen from "./screens/KnowledgeBase/CreateArticleScreen";
 
 // Technician Screens
 import TechnicianDashboardScreen from "./screens/Technician/TechnicianDashboardScreen";
+import MyFeedbackScreen from "./screens/Technician/MyFeedbackScreen";
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -209,6 +210,11 @@ const MainStack = () => (
       name="FeedbackReports"
       component={FeedbackReportsScreen}
       options={{ title: "Reportes de Feedback" }}
+    />
+    <Stack.Screen
+      name="MyFeedback"
+      component={MyFeedbackScreen}
+      options={{ title: "Mi Feedback" }}
     />
   </Stack.Navigator>
 );

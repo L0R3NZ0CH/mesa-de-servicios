@@ -285,6 +285,11 @@ export const feedbackService = {
     const response = await api.get(`/feedback/statistics?${params.toString()}`);
     return response.data;
   },
+
+  getTechnicianFeedback: async (technicianId) => {
+    const response = await api.get(`/feedback/technician/${technicianId}`);
+    return response.data;
+  },
 };
 
 // Servicios de Reportes
