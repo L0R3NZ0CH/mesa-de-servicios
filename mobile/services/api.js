@@ -252,6 +252,11 @@ export const knowledgeBaseService = {
     const response = await api.post(`/knowledge-base/${id}/helpful`);
     return response.data;
   },
+
+  delete: async (id) => {
+    const response = await api.delete(`/knowledge-base/${id}`);
+    return response.data;
+  },
 };
 
 // Servicios de Feedback

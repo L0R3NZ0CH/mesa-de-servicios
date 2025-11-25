@@ -8,11 +8,16 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { knowledgeBaseService } from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
+import { usePermissions } from "../../hooks/usePermissions";
 
 const ArticleDetailScreen = ({ route, navigation }) => {
   const { articleId } = route.params;
+  const { user } = useAuth();
+  const { isAdmin } = usePermissions();
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [hasLiked, setHasLiked] = useState(false);
 
   useEffect(() => {
     loadArticle();
@@ -23,10 +28,11 @@ const ArticleDetailScreen = ({ route, navigation }) => {
       const response = await knowledgeBaseService.getById(articleId);
       if (response.success) {
         setArticle(response.data.article);
+        setHasLiked(response.data.article.user_has_liked || false);
       }
     } catch (error) {
       console.error("Error loading article:", error);
-      alert("Error al cargar el artículo");
+      window.alert("Error al cargar el artículo");
       navigation.goBack();
     } finally {
       setLoading(false);
@@ -34,13 +40,41 @@ const ArticleDetailScreen = ({ route, navigation }) => {
   };
 
   const handleMarkHelpful = async () => {
+    if (hasLiked) {
+      window.alert("Ya has marcado este artículo como útil");
+      return;
+    }
+
     try {
-      await knowledgeBaseService.markHelpful(articleId);
-      alert("¡Gracias por tu feedback!");
-      // Recargar el artículo para actualizar el contador
-      loadArticle();
+      const response = await knowledgeBaseService.markHelpful(articleId);
+      if (response.success) {
+        window.alert("¡Gracias por tu feedback!");
+        setHasLiked(true);
+        // Recargar el artículo para actualizar el contador
+        loadArticle();
+      }
     } catch (error) {
       console.error("Error marking as helpful:", error);
+      const errorMessage = error.response?.data?.message || "Ya has marcado este artículo como útil";
+      window.alert(errorMessage);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm("¿Estás seguro de eliminar este artículo? Esta acción no se puede deshacer.")) {
+      return;
+    }
+
+    try {
+      const response = await knowledgeBaseService.delete(articleId);
+      if (response.success) {
+        window.alert("Artículo eliminado exitosamente");
+        navigation.goBack();
+      }
+    } catch (error) {
+      console.error("Error deleting article:", error);
+      const errorMessage = error.response?.data?.message || "Error al eliminar el artículo";
+      window.alert(errorMessage);
     }
   };
 
@@ -106,13 +140,31 @@ const ArticleDetailScreen = ({ route, navigation }) => {
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={styles.helpfulButton}
+          style={[
+            styles.helpfulButton,
+            hasLiked && styles.helpfulButtonDisabled
+          ]}
           onPress={handleMarkHelpful}
+          disabled={hasLiked}
         >
-          <Text style={styles.helpfulButtonText}>
-            👍 ¿Te fue útil este artículo?
+          <Text style={[
+            styles.helpfulButtonText,
+            hasLiked && styles.helpfulButtonTextDisabled
+          ]}>
+            {hasLiked ? "✓ Ya marcaste como útil" : "👍 ¿Te fue útil este artículo?"}
           </Text>
         </TouchableOpacity>
+
+        {isAdmin && (
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={handleDelete}
+          >
+            <Text style={styles.deleteButtonText}>
+              🗑️ Eliminar Artículo
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {article.created_at && (
           <Text style={styles.dateText}>
@@ -231,7 +283,25 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 15,
   },
+  helpfulButtonDisabled: {
+    backgroundColor: "#4CAF50",
+  },
   helpfulButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  helpfulButtonTextDisabled: {
+    color: "#fff",
+  },
+  deleteButton: {
+    backgroundColor: "#F44336",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  deleteButtonText: {
     color: "#fff",
     fontSize: 14,
     fontWeight: "600",

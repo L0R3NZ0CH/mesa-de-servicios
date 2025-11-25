@@ -16,7 +16,8 @@ class KnowledgeBase {
     return await this.findById(result.insertId);
   }
 
-  static async findById(id) {
+  static async findById(id, userId = null) {
+    console.log("Finding article by ID:", id, "for user:", userId);
     const sql = `SELECT kb.*, c.name as category_name, 
                  u.first_name as created_by_name, u.last_name as created_by_lastname
                  FROM knowledge_base kb
@@ -25,12 +26,31 @@ class KnowledgeBase {
                  WHERE kb.id = ?`;
     const results = await query(sql, [id]);
 
-    if (results[0]) {
-      // Incrementar vistas
-      await query("UPDATE knowledge_base SET views = views + 1 WHERE id = ?", [
-        id,
-      ]);
-      results[0].views += 1;
+    if (results[0] && userId) {
+      // Verificar si el usuario ya vio este artículo
+      const viewCheck = await query(
+        "SELECT id FROM article_views WHERE article_id = ? AND user_id = ?",
+        [id, userId]
+      );
+
+      // Si no ha visto el artículo, registrar la vista
+      if (viewCheck.length === 0) {
+        await query(
+          "INSERT INTO article_views (article_id, user_id) VALUES (?, ?)",
+          [id, userId]
+        );
+        await query("UPDATE knowledge_base SET views = views + 1 WHERE id = ?", [
+          id,
+        ]);
+        results[0].views += 1;
+      }
+
+      // Verificar si el usuario dio like
+      const likeCheck = await query(
+        "SELECT id FROM article_likes WHERE article_id = ? AND user_id = ?",
+        [id, userId]
+      );
+      results[0].user_has_liked = likeCheck.length > 0;
     }
 
     return results[0] || null;
@@ -118,12 +138,30 @@ class KnowledgeBase {
     return await this.findById(id);
   }
 
-  static async incrementHelpful(id) {
+  static async incrementHelpful(id, userId) {
+    // Verificar si el usuario ya dio like
+    const likeCheck = await query(
+      "SELECT id FROM article_likes WHERE article_id = ? AND user_id = ?",
+      [id, userId]
+    );
+
+    if (likeCheck.length > 0) {
+      throw new Error("Ya has marcado este artículo como útil");
+    }
+
+    // Registrar el like
+    await query(
+      "INSERT INTO article_likes (article_id, user_id) VALUES (?, ?)",
+      [id, userId]
+    );
+
+    // Incrementar contador
     await query(
       "UPDATE knowledge_base SET helpful_count = helpful_count + 1 WHERE id = ?",
       [id]
     );
-    return await this.findById(id);
+
+    return await this.findById(id, userId);
   }
 
   static async delete(id) {
