@@ -82,14 +82,15 @@ class TicketController {
         priority_id: req.query.priority_id,
         category_id: req.query.category_id,
         created_by: req.query.created_by,
-        assigned_to:
-          req.query.assigned_to ||
-          (req.user.role === "technician" ? req.user.id : undefined),
+        assigned_to: req.query.assigned_to,
         department_id: req.query.department_id,
         date_from: req.query.date_from,
         date_to: req.query.date_to,
         limit: req.query.limit,
         offset: req.query.offset,
+        user_role: req.user.role,
+        user_id: req.user.id,
+        user_specialty: req.user.specialty,
       };
 
       // Remover filtros undefined

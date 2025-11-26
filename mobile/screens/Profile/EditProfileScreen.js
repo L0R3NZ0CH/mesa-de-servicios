@@ -23,6 +23,8 @@ const EditProfileScreen = () => {
     department: "",
   });
 
+  const isTechnician = user?.role === "technician";
+
   useEffect(() => {
     if (user) {
       setFormData({
@@ -43,8 +45,14 @@ const EditProfileScreen = () => {
 
     setLoading(true);
     try {
-      // No enviar email ya que el backend no permite actualizarlo
-      const { email, ...updateData } = formData;
+      // No enviar email ni department para técnicos
+      const { email, department, ...updateData } = formData;
+
+      // Solo incluir department si no es técnico
+      if (!isTechnician) {
+        updateData.department = department;
+      }
+
       const result = await updateUser(updateData);
       if (result.success) {
         alert("Perfil actualizado exitosamente");
@@ -112,15 +120,30 @@ const EditProfileScreen = () => {
           />
         </View>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Departamento</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="IT"
-            value={formData.department}
-            onChangeText={(value) => updateField("department", value)}
-          />
-        </View>
+        {!isTechnician ? (
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Departamento</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="IT"
+              value={formData.department}
+              onChangeText={(value) => updateField("department", value)}
+            />
+          </View>
+        ) : (
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Especialidad (no editable)</Text>
+            <TextInput
+              style={[styles.input, styles.disabledInput]}
+              placeholder="Hardware, Software, Redes..."
+              value={user?.specialty || "No asignada"}
+              editable={false}
+            />
+            <Text style={styles.helperText}>
+              Tu especialidad determina qué tickets puedes ver y atender
+            </Text>
+          </View>
+        )}
 
         <TouchableOpacity
           style={[styles.button, loading && styles.buttonDisabled]}
@@ -184,6 +207,12 @@ const styles = StyleSheet.create({
   disabledInput: {
     backgroundColor: "#f0f0f0",
     color: "#999",
+  },
+  helperText: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 5,
+    fontStyle: "italic",
   },
 });
 

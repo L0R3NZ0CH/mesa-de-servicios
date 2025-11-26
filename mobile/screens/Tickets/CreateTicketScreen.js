@@ -11,7 +11,11 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth } from "../../context/AuthContext";
-import { ticketService, categoryService, departmentService } from "../../services/api";
+import {
+  ticketService,
+  categoryService,
+  departmentService,
+} from "../../services/api";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 

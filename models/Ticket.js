@@ -100,6 +100,25 @@ class Ticket {
                WHERE 1=1`;
     const params = [];
 
+    // Filtros específicos por rol
+    if (filters.user_role === "user") {
+      // Los usuarios solo ven tickets que crearon
+      sql += " AND t.created_by = ?";
+      params.push(filters.user_id);
+    } else if (filters.user_role === "technician") {
+      // Los técnicos ven tickets de su categoría O asignados a ellos
+      if (filters.user_specialty) {
+        sql += " AND (c.name = ? OR t.assigned_to = ?)";
+        params.push(filters.user_specialty);
+        params.push(filters.user_id);
+      } else {
+        // Si no tiene specialty, solo ve los asignados
+        sql += " AND t.assigned_to = ?";
+        params.push(filters.user_id);
+      }
+    }
+    // Admin ve todos (no agrega filtro)
+
     if (filters.status) {
       sql += " AND t.status = ?";
       params.push(filters.status);
@@ -115,12 +134,12 @@ class Ticket {
       params.push(filters.category_id);
     }
 
-    if (filters.created_by) {
+    if (filters.created_by && !filters.user_role) {
       sql += " AND t.created_by = ?";
       params.push(filters.created_by);
     }
 
-    if (filters.assigned_to) {
+    if (filters.assigned_to && !filters.user_role) {
       sql += " AND t.assigned_to = ?";
       params.push(filters.assigned_to);
     }

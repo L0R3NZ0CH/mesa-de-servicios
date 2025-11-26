@@ -85,12 +85,19 @@ const ProfileScreen = () => {
           </View>
         )}
 
-        {user?.department && (
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Departamento:</Text>
-            <Text style={styles.infoValue}>{user.department}</Text>
-          </View>
-        )}
+        {user?.role === "technician"
+          ? user?.specialty && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Especialidad:</Text>
+                <Text style={styles.infoValue}>{user.specialty}</Text>
+              </View>
+            )
+          : user?.department_name && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Departamento:</Text>
+                <Text style={styles.infoValue}>{user.department_name}</Text>
+              </View>
+            )}
       </View>
 
       <View style={styles.section}>

@@ -35,10 +35,12 @@ class User {
   }
 
   static async findById(id) {
-    const sql = `SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.phone, u.department_id, 
-                 d.name as department_name, u.is_active, u.created_at 
+    const sql = `SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.phone, u.department_id,
+                 d.name as department_name, u.is_active, u.biometric_enabled, u.sso_enabled, u.created_at,
+                 t.specialty, t.is_available as tech_available
                  FROM users u
                  LEFT JOIN departments d ON u.department_id = d.id
+                 LEFT JOIN technicians t ON u.id = t.user_id
                  WHERE u.id = ?`;
     const results = await query(sql, [id]);
     return results[0] || null;

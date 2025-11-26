@@ -21,9 +21,12 @@ const authenticate = async (req, res, next) => {
 
     const decoded = jwt.verify(token, jwtConfig.secret);
 
-    // Verificar que el usuario existe y está activo
+    // Verificar que el usuario existe y está activo, incluir specialty si es técnico
     const users = await query(
-      "SELECT id, email, role, is_active FROM users WHERE id = ?",
+      `SELECT u.id, u.email, u.role, u.is_active, t.specialty 
+       FROM users u
+       LEFT JOIN technicians t ON u.id = t.user_id
+       WHERE u.id = ?`,
       [decoded.userId]
     );
 
@@ -47,6 +50,7 @@ const authenticate = async (req, res, next) => {
       id: user.id,
       email: user.email,
       role: user.role,
+      specialty: user.specialty || null,
     };
 
     next();
