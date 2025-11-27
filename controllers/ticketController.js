@@ -18,32 +18,53 @@ class TicketController {
         assigned_to: req.body.assigned_to,
       };
 
-      // Asignación automática si está habilitada y no se especifica técnico
-      if (!ticketData.assigned_to) {
-        const availableTechnicians = await Technician.findAll({
-          is_available: true,
-        });
-        if (availableTechnicians.length > 0) {
-          // Asignar al técnico con menos tickets activos
-          const techniciansWithWorkload = await Promise.all(
-            availableTechnicians.map(async (tech) => {
-              const workload = await Technician.getWorkload(tech.id);
-              return {
-                ...tech,
-                activeTickets:
-                  workload.open_tickets + workload.in_progress_tickets,
-              };
-            })
+      // Asignación automática basada en categoría del ticket
+      if (!ticketData.assigned_to && ticketData.category_id) {
+        // Obtener nombre de la categoría
+        const categoryResult = await query(
+          "SELECT name FROM categories WHERE id = ?",
+          [ticketData.category_id]
+        );
+
+        if (categoryResult && categoryResult.length > 0) {
+          const categoryName = categoryResult[0].name;
+
+          // Buscar técnicos disponibles con specialty que coincida con la categoría
+          const availableTechnicians = await Technician.findAll({
+            is_available: true,
+          });
+
+          // Filtrar técnicos cuya especialidad coincida con la categoría
+          const matchingTechnicians = availableTechnicians.filter(
+            (tech) =>
+              tech.specialty &&
+              tech.specialty.toLowerCase() === categoryName.toLowerCase()
           );
 
-          techniciansWithWorkload.sort(
-            (a, b) => a.activeTickets - b.activeTickets
-          );
-          if (
-            techniciansWithWorkload[0].activeTickets <
-            techniciansWithWorkload[0].max_tickets
-          ) {
-            ticketData.assigned_to = techniciansWithWorkload[0].user_id;
+          if (matchingTechnicians.length > 0) {
+            // Asignar al técnico con menos tickets activos
+            const techniciansWithWorkload = await Promise.all(
+              matchingTechnicians.map(async (tech) => {
+                const workload = await Technician.getWorkload(tech.id);
+                return {
+                  ...tech,
+                  activeTickets:
+                    workload.open_tickets + workload.in_progress_tickets,
+                };
+              })
+            );
+
+            techniciansWithWorkload.sort(
+              (a, b) => a.activeTickets - b.activeTickets
+            );
+
+            // Asignar si el técnico no ha excedido su límite
+            if (
+              techniciansWithWorkload[0].activeTickets <
+              techniciansWithWorkload[0].max_tickets
+            ) {
+              ticketData.assigned_to = techniciansWithWorkload[0].user_id;
+            }
           }
         }
       }

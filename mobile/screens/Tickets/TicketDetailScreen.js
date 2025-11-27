@@ -128,6 +128,50 @@ const TicketDetailScreen = () => {
     return false;
   };
 
+  const canAcceptTicket = () => {
+    // Solo técnicos pueden aceptar tickets
+    if (!isTechnician) return false;
+
+    // El ticket debe estar abierto y sin asignar o la categoría debe coincidir con la especialidad
+    if (ticket?.status !== "open") return false;
+
+    // Si no está asignado y la categoría coincide con la especialidad del técnico
+    if (!ticket?.assigned_to && user?.specialty) {
+      return (
+        ticket?.category_name?.toLowerCase() === user?.specialty?.toLowerCase()
+      );
+    }
+
+    // Si está asignado al técnico actual pero aún no lo ha aceptado
+    if (ticket?.assigned_to === user?.id) return true;
+
+    return false;
+  };
+
+  const handleAcceptTicket = async () => {
+    const message = "¿Estás seguro de aceptar este ticket?";
+
+    if (window.confirm(message)) {
+      setSubmitting(true);
+      try {
+        const result = await ticketService.update(ticketId, {
+          assigned_to: user?.id,
+          status: "in_progress",
+        });
+        if (result.success) {
+          await loadTicket();
+          window.alert("Ticket aceptado y en proceso");
+        } else {
+          Alert.alert("Error", result.message || "Error al aceptar ticket");
+        }
+      } catch (error) {
+        Alert.alert("Error", "Error de conexión");
+      } finally {
+        setSubmitting(false);
+      }
+    }
+  };
+
   const getStatusColor = (status) => {
     const colors = {
       open: "#2196F3",
@@ -279,16 +323,29 @@ const TicketDetailScreen = () => {
           </View>
         )}
 
-        {/* Botones de cambio de estado */}
-        {canChangeStatus() && ticket.status === "open" && (
+        {/* Botón para que técnicos acepten tickets */}
+        {canAcceptTicket() && (
           <TouchableOpacity
-            style={[styles.statusButton, { backgroundColor: "#FF9800" }]}
-            onPress={() => handleUpdateStatus("in_progress", "En Proceso")}
+            style={[styles.statusButton, { backgroundColor: "#4CAF50" }]}
+            onPress={handleAcceptTicket}
             disabled={submitting}
           >
-            <Text style={styles.statusButtonText}>▶️ Tomar Ticket</Text>
+            <Text style={styles.statusButtonText}>✅ Aceptar Ticket</Text>
           </TouchableOpacity>
         )}
+
+        {/* Botones de cambio de estado */}
+        {canChangeStatus() &&
+          ticket.status === "open" &&
+          !canAcceptTicket() && (
+            <TouchableOpacity
+              style={[styles.statusButton, { backgroundColor: "#FF9800" }]}
+              onPress={() => handleUpdateStatus("in_progress", "En Proceso")}
+              disabled={submitting}
+            >
+              <Text style={styles.statusButtonText}>▶️ Tomar Ticket</Text>
+            </TouchableOpacity>
+          )}
 
         {canChangeStatus() && ticket.status === "in_progress" && (
           <View style={styles.statusButtonsRow}>
