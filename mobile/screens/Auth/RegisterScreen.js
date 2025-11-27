@@ -1,79 +1,86 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   ActivityIndicator,
-} from 'react-native';
-import { useAuth } from '../../context/AuthContext';
+  Alert,
+} from "react-native";
+import { useRouter } from "expo-router";
+import { useAuth } from "../../context/AuthContext";
 
-const RegisterScreen = ({ navigation }) => {
+const RegisterScreen = () => {
+  const router = useRouter();
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
-    first_name: '',
-    last_name: '',
-    phone: '',
-    department: '',
+    email: "",
+    password: "",
+    confirmPassword: "",
+    first_name: "",
+    last_name: "",
+    phone: "",
   });
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
 
   const handleRegister = async () => {
-    if (!formData.email || !formData.password || !formData.first_name || !formData.last_name) {
-      Alert.alert('Error', 'Por favor completa los campos obligatorios');
+    if (
+      !formData.email ||
+      !formData.password ||
+      !formData.first_name ||
+      !formData.last_name
+    ) {
+      window.alert("Por favor completa los campos obligatorios");
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
+      window.alert("Las contraseñas no coinciden");
       return;
     }
 
     if (formData.password.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+      window.alert("La contraseña debe tener al menos 6 caracteres");
       return;
     }
 
     setLoading(true);
     try {
       const { confirmPassword, ...registerData } = formData;
-      const result = await register({ ...registerData, role: 'user' });
-      
+      const result = await register({ ...registerData, role: "user" });
+
+      setLoading(false);
+
       if (result.success) {
-        Alert.alert('Éxito', 'Registro exitoso. Ahora puedes iniciar sesión.', [
-          { text: 'OK', onPress: () => navigation.navigate('Login') },
-        ]);
+        router.push("/(auth)/login");
       } else {
-        Alert.alert('Error', result.message || 'Error al registrar');
+        window.alert(result.message || "Error al registrar");
       }
     } catch (error) {
-      Alert.alert('Error', 'Error de conexión. Verifica tu conexión a internet.');
-    } finally {
       setLoading(false);
+      window.alert("Error de conexión. Verifica tu conexión a internet.");
     }
   };
 
   const updateField = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Text style={styles.title}>Crear Cuenta</Text>
-          <Text style={styles.subtitle}>Completa el formulario para registrarte</Text>
+          <Text style={styles.subtitle}>
+            Completa el formulario para registrarte
+          </Text>
         </View>
 
         <View style={styles.form}>
@@ -84,7 +91,7 @@ const RegisterScreen = ({ navigation }) => {
                 style={styles.input}
                 placeholder="Juan"
                 value={formData.first_name}
-                onChangeText={(value) => updateField('first_name', value)}
+                onChangeText={(value) => updateField("first_name", value)}
               />
             </View>
 
@@ -94,7 +101,7 @@ const RegisterScreen = ({ navigation }) => {
                 style={styles.input}
                 placeholder="Pérez"
                 value={formData.last_name}
-                onChangeText={(value) => updateField('last_name', value)}
+                onChangeText={(value) => updateField("last_name", value)}
               />
             </View>
           </View>
@@ -105,7 +112,7 @@ const RegisterScreen = ({ navigation }) => {
               style={styles.input}
               placeholder="tu@email.com"
               value={formData.email}
-              onChangeText={(value) => updateField('email', value)}
+              onChangeText={(value) => updateField("email", value)}
               keyboardType="email-address"
               autoCapitalize="none"
             />
@@ -117,18 +124,8 @@ const RegisterScreen = ({ navigation }) => {
               style={styles.input}
               placeholder="1234567890"
               value={formData.phone}
-              onChangeText={(value) => updateField('phone', value)}
+              onChangeText={(value) => updateField("phone", value)}
               keyboardType="phone-pad"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Departamento</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="IT"
-              value={formData.department}
-              onChangeText={(value) => updateField('department', value)}
             />
           </View>
 
@@ -138,7 +135,7 @@ const RegisterScreen = ({ navigation }) => {
               style={styles.input}
               placeholder="••••••••"
               value={formData.password}
-              onChangeText={(value) => updateField('password', value)}
+              onChangeText={(value) => updateField("password", value)}
               secureTextEntry
             />
           </View>
@@ -149,7 +146,7 @@ const RegisterScreen = ({ navigation }) => {
               style={styles.input}
               placeholder="••••••••"
               value={formData.confirmPassword}
-              onChangeText={(value) => updateField('confirmPassword', value)}
+              onChangeText={(value) => updateField("confirmPassword", value)}
               secureTextEntry
             />
           </View>
@@ -168,7 +165,7 @@ const RegisterScreen = ({ navigation }) => {
 
           <View style={styles.loginContainer}>
             <Text style={styles.loginText}>¿Ya tienes cuenta? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
               <Text style={styles.loginLink}>Inicia sesión</Text>
             </TouchableOpacity>
           </View>
@@ -181,7 +178,7 @@ const RegisterScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
   scrollContent: {
     flexGrow: 1,
@@ -189,52 +186,52 @@ const styles = StyleSheet.create({
     paddingTop: 40,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 30,
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#2196F3',
+    fontWeight: "bold",
+    color: "#2196F3",
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
   },
   form: {
-    width: '100%',
+    width: "100%",
   },
   row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   inputContainer: {
     marginBottom: 20,
   },
   halfWidth: {
-    width: '48%',
+    width: "48%",
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     padding: 15,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
   },
   button: {
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
     borderRadius: 8,
     padding: 15,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 10,
     marginBottom: 20,
   },
@@ -242,25 +239,24 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   loginContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
   },
   loginText: {
-    color: '#666',
+    color: "#666",
     fontSize: 14,
   },
   loginLink: {
-    color: '#2196F3',
+    color: "#2196F3",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
 
 export default RegisterScreen;
-

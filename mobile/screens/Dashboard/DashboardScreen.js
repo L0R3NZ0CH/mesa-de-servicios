@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,28 +7,59 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-} from 'react-native';
-import { useAuth } from '../../context/AuthContext';
-import { ticketService } from '../../services/api';
+} from "react-native";
+import { useRouter } from "expo-router";
+import { useAuth } from "../../context/AuthContext";
+import { usePermissions } from "../../hooks/usePermissions";
+import { ticketService } from "../../services/api";
 
-const DashboardScreen = ({ navigation }) => {
+const DashboardScreen = () => {
+  const router = useRouter();
   const { user } = useAuth();
+  const { can, isAdmin, isTechnician, isUser } = usePermissions();
   const [statistics, setStatistics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    loadStatistics();
-  }, []);
+    if (user) {
+      loadStatistics();
+    }
+  }, [user]);
 
   const loadStatistics = async () => {
     try {
-      const response = await ticketService.getStatistics();
-      if (response.success) {
-        setStatistics(response.data.statistics);
+      // Admin y Technician pueden ver estadísticas generales
+      if (can.viewTicketStatistics) {
+        const response = await ticketService.getStatistics();
+        if (response.success) {
+          setStatistics(response.data.statistics);
+        }
+      } else if (can.viewOwnTickets) {
+        // Usuarios normales solo ven sus propios tickets
+        const response = await ticketService.getAll({ created_by: user?.id });
+        if (response.success) {
+          const tickets = response.data.tickets || [];
+          setStatistics({
+            total: tickets.length,
+            open: tickets.filter((t) => t.status === "open").length,
+            in_progress: tickets.filter((t) => t.status === "in_progress")
+              .length,
+            resolved: tickets.filter((t) => t.status === "resolved").length,
+            closed: tickets.filter((t) => t.status === "closed").length,
+          });
+        }
       }
     } catch (error) {
-      console.error('Error loading statistics:', error);
+      console.error("Error loading statistics:", error);
+      // Si hay error, establecer estadísticas en 0
+      setStatistics({
+        total: 0,
+        open: 0,
+        in_progress: 0,
+        resolved: 0,
+        closed: 0,
+      });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -61,6 +92,7 @@ const DashboardScreen = ({ navigation }) => {
   return (
     <ScrollView
       style={styles.container}
+      contentContainerStyle={styles.scrollContent}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
@@ -78,13 +110,18 @@ const DashboardScreen = ({ navigation }) => {
             title="Total Tickets"
             value={statistics?.total}
             color="#2196F3"
-            onPress={() => navigation.navigate('TicketList')}
+            onPress={() => router.push("/(tabs)/tickets")}
           />
           <StatCard
             title="Abiertos"
             value={statistics?.open}
             color="#2196F3"
-            onPress={() => navigation.navigate('TicketList', { filter: 'open' })}
+            onPress={() =>
+              router.push({
+                pathname: "/(tabs)/tickets",
+                params: { filter: "open" },
+              })
+            }
           />
         </View>
 
@@ -93,58 +130,131 @@ const DashboardScreen = ({ navigation }) => {
             title="En Proceso"
             value={statistics?.in_progress}
             color="#FF9800"
-            onPress={() => navigation.navigate('TicketList', { filter: 'in_progress' })}
+            onPress={() =>
+              router.push({
+                pathname: "/(tabs)/tickets",
+                params: { filter: "in_progress" },
+              })
+            }
           />
           <StatCard
             title="Resueltos"
             value={statistics?.resolved}
             color="#4CAF50"
-            onPress={() => navigation.navigate('TicketList', { filter: 'resolved' })}
+            onPress={() =>
+              router.push({
+                pathname: "/(tabs)/tickets",
+                params: { filter: "resolved" },
+              })
+            }
           />
         </View>
       </View>
 
       <View style={styles.quickActions}>
         <Text style={styles.sectionTitle}>Acciones Rápidas</Text>
-        
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('CreateTicket')}
-        >
-          <Text style={styles.actionButtonText}>➕ Crear Nuevo Ticket</Text>
-        </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('KnowledgeBase')}
-        >
-          <Text style={styles.actionButtonText}>📚 Base de Conocimientos</Text>
-        </TouchableOpacity>
-
-        {user?.role === 'technician' && (
+        {can.createTicket && (
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => navigation.navigate('MyTickets')}
+            onPress={() => router.push("/create-ticket")}
           >
-            <Text style={styles.actionButtonText}>🎫 Mis Tickets Asignados</Text>
+            <Text style={styles.actionButtonText}>➕ Crear Nuevo Ticket</Text>
           </TouchableOpacity>
         )}
 
-        {user?.role === 'admin' && (
-          <>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('Reports')}
-            >
-              <Text style={styles.actionButtonText}>📊 Reportes</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('Technicians')}
-            >
-              <Text style={styles.actionButtonText}>👥 Gestión de Técnicos</Text>
-            </TouchableOpacity>
-          </>
+        {can.viewKnowledgeBase && (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push("/(tabs)/knowledge")}
+          >
+            <Text style={styles.actionButtonText}>
+              📚 Base de Conocimientos
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {can.viewOwnAssignedTickets && isTechnician && (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() =>
+              router.push({
+                pathname: "/(tabs)/tickets",
+                params: { filter: "assigned" },
+              })
+            }
+          >
+            <Text style={styles.actionButtonText}>
+              🎫 Mis Tickets Asignados
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {can.viewReports && (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push("/(tabs)/reports")}
+          >
+            <Text style={styles.actionButtonText}>📊 Reportes</Text>
+          </TouchableOpacity>
+        )}
+
+        {can.manageTechnicians && (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push("/technicians")}
+          >
+            <Text style={styles.actionButtonText}>👥 Gestión de Técnicos</Text>
+          </TouchableOpacity>
+        )}
+
+        {can.manageUsers && (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push("/users")}
+          >
+            <Text style={styles.actionButtonText}>👤 Gestión de Usuarios</Text>
+          </TouchableOpacity>
+        )}
+
+        {can.manageCategories && (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push("/categories")}
+          >
+            <Text style={styles.actionButtonText}>
+              📁 Gestión de Categorías
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {can.manageCategories && (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push("/departments")}
+          >
+            <Text style={styles.actionButtonText}>
+              🏢 Gestión de Departamentos
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {can.manageSLA && (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push("/sla-config")}
+          >
+            <Text style={styles.actionButtonText}>⚙️ Configuración SLA</Text>
+          </TouchableOpacity>
+        )}
+
+        {can.viewNotifications && (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push("/notifications")}
+          >
+            <Text style={styles.actionButtonText}>🔔 Notificaciones</Text>
+          </TouchableOpacity>
         )}
       </View>
     </ScrollView>
@@ -154,45 +264,48 @@ const DashboardScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
+  },
+  scrollContent: {
+    paddingBottom: 30,
   },
   centerContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
     padding: 20,
     paddingTop: 40,
   },
   welcomeText: {
     fontSize: 16,
-    color: '#fff',
+    color: "#fff",
     opacity: 0.9,
   },
   userName: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: "bold",
+    color: "#fff",
     marginTop: 5,
   },
   statsContainer: {
     padding: 15,
   },
   statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 15,
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     padding: 20,
     borderRadius: 8,
     marginHorizontal: 5,
     borderLeftWidth: 4,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -200,29 +313,29 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 5,
   },
   statTitle: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
   },
   quickActions: {
     padding: 15,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 15,
   },
   actionButton: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     padding: 15,
     borderRadius: 8,
     marginBottom: 10,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -230,9 +343,8 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     fontSize: 16,
-    color: '#333',
+    color: "#333",
   },
 });
 
 export default DashboardScreen;
-

@@ -18,5 +18,4 @@ RUN mkdir -p uploads
 EXPOSE 3000
 
 # Comando por defecto
-CMD ["npm", "start"]
-
+CMD ["npm", "run", "dev"]

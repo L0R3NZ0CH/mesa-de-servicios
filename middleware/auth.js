@@ -5,7 +5,12 @@ const { query } = require("../config/database");
 // Middleware de autenticación
 const authenticate = async (req, res, next) => {
   try {
-    const token = req.header("Authorization")?.replace("Bearer ", "");
+    // Intentar obtener token del header o query parameter (para descargas CSV)
+    let token = req.header("Authorization")?.replace("Bearer ", "");
+
+    if (!token && req.query.token) {
+      token = req.query.token;
+    }
 
     if (!token) {
       return res.status(401).json({
@@ -16,9 +21,12 @@ const authenticate = async (req, res, next) => {
 
     const decoded = jwt.verify(token, jwtConfig.secret);
 
-    // Verificar que el usuario existe y está activo
+    // Verificar que el usuario existe y está activo, incluir specialty si es técnico
     const users = await query(
-      "SELECT id, email, role, is_active FROM users WHERE id = ?",
+      `SELECT u.id, u.email, u.role, u.is_active, t.specialty 
+       FROM users u
+       LEFT JOIN technicians t ON u.id = t.user_id
+       WHERE u.id = ?`,
       [decoded.userId]
     );
 
@@ -42,6 +50,7 @@ const authenticate = async (req, res, next) => {
       id: user.id,
       email: user.email,
       role: user.role,
+      specialty: user.specialty || null,
     };
 
     next();

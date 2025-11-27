@@ -3,6 +3,19 @@
 CREATE DATABASE IF NOT EXISTS mesa_servicios CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE mesa_servicios;
 
+-- Tabla de departamentos
+CREATE TABLE IF NOT EXISTS departments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    manager_id INT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_name (name),
+    INDEX idx_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Tabla de usuarios
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -12,15 +25,17 @@ CREATE TABLE IF NOT EXISTS users (
     last_name VARCHAR(100) NOT NULL,
     role ENUM('admin', 'technician', 'user') NOT NULL DEFAULT 'user',
     phone VARCHAR(20),
-    department VARCHAR(100),
+    department_id INT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     biometric_enabled BOOLEAN DEFAULT FALSE,
     sso_enabled BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL,
     INDEX idx_email (email),
     INDEX idx_role (role),
-    INDEX idx_active (is_active)
+    INDEX idx_active (is_active),
+    INDEX idx_department (department_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla de categorías de tickets
@@ -81,7 +96,6 @@ CREATE TABLE IF NOT EXISTS tickets (
     incident_type_id INT,
     created_by INT NOT NULL,
     assigned_to INT,
-    department VARCHAR(100),
     response_time TIMESTAMP NULL,
     resolution_time TIMESTAMP NULL,
     closed_at TIMESTAMP NULL,
@@ -265,6 +279,17 @@ CREATE TABLE IF NOT EXISTS response_templates (
 
 -- Insertar datos iniciales
 
+-- Departamentos por defecto
+INSERT INTO departments (name, description, is_active) VALUES
+('Tecnología de la Información', 'Departamento de TI y soporte técnico', TRUE),
+('Recursos Humanos', 'Gestión de personal y nómina', TRUE),
+('Finanzas', 'Contabilidad y gestión financiera', TRUE),
+('Operaciones', 'Operaciones y logística', TRUE),
+('Marketing', 'Marketing y comunicaciones', TRUE),
+('Ventas', 'Equipo comercial y ventas', TRUE),
+('Administración', 'Administración general', TRUE),
+('Sin Asignar', 'Usuarios sin departamento asignado', TRUE);
+
 -- Prioridades por defecto
 INSERT INTO priorities (name, level, response_time_hours, resolution_time_hours) VALUES
 ('Baja', 1, 24, 72),
@@ -307,6 +332,32 @@ FROM priorities;
 -- Password: Admin123!
 
 -- Configuración por defecto
+-- Tabla de vistas de artículos (una vista por usuario)
+CREATE TABLE IF NOT EXISTS article_views (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    article_id INT NOT NULL,
+    user_id INT NOT NULL,
+    viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (article_id) REFERENCES knowledge_base(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_article_view (article_id, user_id),
+    INDEX idx_article (article_id),
+    INDEX idx_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabla de likes de artículos (un like por usuario)
+CREATE TABLE IF NOT EXISTS article_likes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    article_id INT NOT NULL,
+    user_id INT NOT NULL,
+    liked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (article_id) REFERENCES knowledge_base(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_article_like (article_id, user_id),
+    INDEX idx_article (article_id),
+    INDEX idx_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT INTO settings (key_name, value, description) VALUES
 ('app_name', 'Mesa de Servicios', 'Nombre de la aplicación'),
 ('company_logo', '', 'Logo de la empresa'),

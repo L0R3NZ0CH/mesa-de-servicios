@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,20 +8,26 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
-} from 'react-native';
-import { useAuth } from '../../context/AuthContext';
-import { ticketService } from '../../services/api';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+} from "react-native";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { useAuth } from "../../context/AuthContext";
+import { usePermissions } from "../../hooks/usePermissions";
+import { ticketService } from "../../services/api";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
-const TicketDetailScreen = ({ route, navigation }) => {
-  const { ticketId } = route.params;
+const TicketDetailScreen = () => {
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  const { ticketId } = params;
   const { user } = useAuth();
+  const { can, isAdmin, isTechnician } = usePermissions();
   const [ticket, setTicket] = useState(null);
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [commentText, setCommentText] = useState('');
+  const [commentText, setCommentText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [isInternalComment, setIsInternalComment] = useState(false);
 
   useEffect(() => {
     loadTicket();
@@ -35,7 +41,7 @@ const TicketDetailScreen = ({ route, navigation }) => {
         setComments(response.data.comments || []);
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo cargar el ticket');
+      Alert.alert("Error", "No se pudo cargar el ticket");
     } finally {
       setLoading(false);
     }
@@ -43,35 +49,138 @@ const TicketDetailScreen = ({ route, navigation }) => {
 
   const handleAddComment = async () => {
     if (!commentText.trim()) {
-      Alert.alert('Error', 'El comentario no puede estar vacío');
+      Alert.alert("Error", "El comentario no puede estar vacío");
+      return;
+    }
+
+    if (!can.addComment) {
+      Alert.alert("Error", "No tienes permisos para agregar comentarios");
       return;
     }
 
     setSubmitting(true);
     try {
-      const result = await ticketService.addComment(ticketId, commentText, false);
+      const result = await ticketService.addComment(
+        ticketId,
+        commentText,
+        isInternalComment && can.addInternalComment
+      );
       if (result.success) {
-        setCommentText('');
+        setCommentText("");
+        setIsInternalComment(false);
         loadTicket();
       } else {
-        Alert.alert('Error', result.message || 'Error al agregar comentario');
+        Alert.alert("Error", result.message || "Error al agregar comentario");
       }
     } catch (error) {
-      Alert.alert('Error', 'Error de conexión');
+      Alert.alert("Error", "Error de conexión");
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handleUpdateStatus = async (newStatus, statusLabel) => {
+    const message = `¿Estás seguro de marcar este ticket como "${statusLabel}"?`;
+
+    if (window.confirm(message)) {
+      setSubmitting(true);
+      try {
+        const result = await ticketService.update(ticketId, {
+          status: newStatus,
+        });
+        if (result.success) {
+          await loadTicket();
+          window.alert(`Ticket actualizado a "${statusLabel}"`);
+        } else {
+          Alert.alert("Error", result.message || "Error al actualizar ticket");
+        }
+      } catch (error) {
+        Alert.alert("Error", "Error de conexión");
+      } finally {
+        setSubmitting(false);
+      }
+    }
+  };
+
+  const canEditTicket = () => {
+    // Admin puede editar cualquier ticket
+    if (can.updateAnyTicket) return true;
+
+    // Técnico puede editar tickets asignados a él
+    if (can.updateAssignedTicket && ticket?.assigned_to === user?.id)
+      return true;
+
+    // Usuario puede editar sus propios tickets si están abiertos
+    if (ticket?.created_by === user?.id && ticket?.status === "open")
+      return true;
+
+    return false;
+  };
+
+  const canChangeStatus = () => {
+    // Admin puede cambiar cualquier estado
+    if (can.updateAnyTicket) return true;
+
+    // Técnico puede cambiar estado de tickets asignados
+    if (can.updateAssignedTicket && ticket?.assigned_to === user?.id)
+      return true;
+
+    return false;
+  };
+
+  const canAcceptTicket = () => {
+    // Solo técnicos pueden aceptar tickets
+    if (!isTechnician) return false;
+
+    // El ticket debe estar abierto y sin asignar o la categoría debe coincidir con la especialidad
+    if (ticket?.status !== "open") return false;
+
+    // Si no está asignado y la categoría coincide con la especialidad del técnico
+    if (!ticket?.assigned_to && user?.specialty) {
+      return (
+        ticket?.category_name?.toLowerCase() === user?.specialty?.toLowerCase()
+      );
+    }
+
+    // Si está asignado al técnico actual pero aún no lo ha aceptado
+    if (ticket?.assigned_to === user?.id) return true;
+
+    return false;
+  };
+
+  const handleAcceptTicket = async () => {
+    const message = "¿Estás seguro de aceptar este ticket?";
+
+    if (window.confirm(message)) {
+      setSubmitting(true);
+      try {
+        const result = await ticketService.update(ticketId, {
+          assigned_to: user?.id,
+          status: "in_progress",
+        });
+        if (result.success) {
+          await loadTicket();
+          window.alert("Ticket aceptado y en proceso");
+        } else {
+          Alert.alert("Error", result.message || "Error al aceptar ticket");
+        }
+      } catch (error) {
+        Alert.alert("Error", "Error de conexión");
+      } finally {
+        setSubmitting(false);
+      }
+    }
+  };
+
   const getStatusColor = (status) => {
     const colors = {
-      open: '#2196F3',
-      in_progress: '#FF9800',
-      pending: '#9C27B0',
-      resolved: '#4CAF50',
-      closed: '#757575',
+      open: "#2196F3",
+      in_progress: "#FF9800",
+      pending: "#9C27B0",
+      resolved: "#4CAF50",
+      closed: "#757575",
     };
-    return colors[status] || '#666';
+    return colors[status] || "#666";
   };
 
   if (loading) {
@@ -91,7 +200,10 @@ const TicketDetailScreen = ({ route, navigation }) => {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+    >
       <View style={styles.header}>
         <Text style={styles.ticketNumber}>{ticket.ticket_number}</Text>
         <View
@@ -101,10 +213,15 @@ const TicketDetailScreen = ({ route, navigation }) => {
           ]}
         >
           <Text style={styles.statusText}>
-            {ticket.status === 'open' ? 'Abierto' :
-             ticket.status === 'in_progress' ? 'En Proceso' :
-             ticket.status === 'pending' ? 'Pendiente' :
-             ticket.status === 'resolved' ? 'Resuelto' : 'Cerrado'}
+            {ticket.status === "open"
+              ? "Abierto"
+              : ticket.status === "in_progress"
+              ? "En Proceso"
+              : ticket.status === "pending"
+              ? "Pendiente"
+              : ticket.status === "resolved"
+              ? "Resuelto"
+              : "Cerrado"}
           </Text>
         </View>
       </View>
@@ -126,7 +243,9 @@ const TicketDetailScreen = ({ route, navigation }) => {
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Creado:</Text>
           <Text style={styles.infoValue}>
-            {format(new Date(ticket.created_at), 'dd MMM yyyy HH:mm', { locale: es })}
+            {format(new Date(ticket.created_at), "dd MMM yyyy HH:mm", {
+              locale: es,
+            })}
           </Text>
         </View>
         {ticket.assigned_to_name && (
@@ -141,37 +260,184 @@ const TicketDetailScreen = ({ route, navigation }) => {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Comentarios ({comments.length})</Text>
-        
-        {comments.map((comment) => (
-          <View key={comment.id} style={styles.commentCard}>
-            <View style={styles.commentHeader}>
-              <Text style={styles.commentAuthor}>
-                {comment.first_name} {comment.last_name}
-              </Text>
-              <Text style={styles.commentDate}>
-                {format(new Date(comment.created_at), 'dd MMM yyyy HH:mm', { locale: es })}
-              </Text>
-            </View>
-            <Text style={styles.commentText}>{comment.comment}</Text>
-          </View>
-        ))}
 
-        <View style={styles.commentInputContainer}>
-          <TextInput
-            style={styles.commentInput}
-            placeholder="Escribe un comentario..."
-            value={commentText}
-            onChangeText={setCommentText}
-            multiline
-          />
+        {comments.map((comment) => {
+          // Ocultar comentarios internos si el usuario no tiene permiso
+          if (comment.is_internal && !can.viewInternalComments) {
+            return null;
+          }
+
+          return (
+            <View key={comment.id} style={styles.commentCard}>
+              <View style={styles.commentHeader}>
+                <View style={styles.commentAuthorContainer}>
+                  <Text style={styles.commentAuthor}>
+                    {comment.first_name} {comment.last_name}
+                  </Text>
+                  {comment.is_internal && (
+                    <Text style={styles.internalBadge}>Interno</Text>
+                  )}
+                </View>
+                <Text style={styles.commentDate}>
+                  {format(new Date(comment.created_at), "dd MMM yyyy HH:mm", {
+                    locale: es,
+                  })}
+                </Text>
+              </View>
+              <Text style={styles.commentText}>{comment.comment}</Text>
+            </View>
+          );
+        })}
+
+        {can.addComment && (
+          <View style={styles.commentInputContainer}>
+            <TextInput
+              style={styles.commentInput}
+              placeholder="Escribe un comentario..."
+              value={commentText}
+              onChangeText={setCommentText}
+              multiline
+            />
+
+            {can.addInternalComment && (
+              <TouchableOpacity
+                style={styles.internalToggle}
+                onPress={() => setIsInternalComment(!isInternalComment)}
+              >
+                <Text style={styles.internalToggleText}>
+                  {isInternalComment ? "🔒 Interno" : "🌐 Público"}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[
+                styles.commentButton,
+                submitting && styles.buttonDisabled,
+              ]}
+              onPress={handleAddComment}
+              disabled={submitting}
+            >
+              <Text style={styles.commentButtonText}>Enviar</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Botón para que técnicos acepten tickets */}
+        {canAcceptTicket() && (
           <TouchableOpacity
-            style={[styles.commentButton, submitting && styles.buttonDisabled]}
-            onPress={handleAddComment}
+            style={[styles.statusButton, { backgroundColor: "#4CAF50" }]}
+            onPress={handleAcceptTicket}
             disabled={submitting}
           >
-            <Text style={styles.commentButtonText}>Enviar</Text>
+            <Text style={styles.statusButtonText}>✅ Aceptar Ticket</Text>
           </TouchableOpacity>
-        </View>
+        )}
+
+        {/* Botones de cambio de estado */}
+        {canChangeStatus() &&
+          ticket.status === "open" &&
+          !canAcceptTicket() && (
+            <TouchableOpacity
+              style={[styles.statusButton, { backgroundColor: "#FF9800" }]}
+              onPress={() => handleUpdateStatus("in_progress", "En Proceso")}
+              disabled={submitting}
+            >
+              <Text style={styles.statusButtonText}>▶️ Tomar Ticket</Text>
+            </TouchableOpacity>
+          )}
+
+        {canChangeStatus() && ticket.status === "in_progress" && (
+          <View style={styles.statusButtonsRow}>
+            <TouchableOpacity
+              style={[
+                styles.statusButton,
+                styles.halfButton,
+                { backgroundColor: "#9C27B0" },
+              ]}
+              onPress={() => handleUpdateStatus("pending", "Pendiente")}
+              disabled={submitting}
+            >
+              <Text style={styles.statusButtonText}>⏸️ Pendiente</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.statusButton,
+                styles.halfButton,
+                { backgroundColor: "#4CAF50" },
+              ]}
+              onPress={() => handleUpdateStatus("resolved", "Resuelto")}
+              disabled={submitting}
+            >
+              <Text style={styles.statusButtonText}>✅ Resolver</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {canChangeStatus() && ticket.status === "pending" && (
+          <TouchableOpacity
+            style={[styles.statusButton, { backgroundColor: "#FF9800" }]}
+            onPress={() => handleUpdateStatus("in_progress", "En Proceso")}
+            disabled={submitting}
+          >
+            <Text style={styles.statusButtonText}>▶️ Continuar</Text>
+          </TouchableOpacity>
+        )}
+
+        {canChangeStatus() && ticket.status === "resolved" && (
+          <TouchableOpacity
+            style={[styles.statusButton, { backgroundColor: "#757575" }]}
+            onPress={() => handleUpdateStatus("closed", "Cerrado")}
+            disabled={submitting}
+          >
+            <Text style={styles.statusButtonText}>🔒 Cerrar Ticket</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Botón para reabrir tickets cerrados (solo admin) */}
+        {can.updateAnyTicket && ticket.status === "closed" && (
+          <TouchableOpacity
+            style={[styles.statusButton, { backgroundColor: "#2196F3" }]}
+            onPress={() => handleUpdateStatus("open", "Abierto")}
+            disabled={submitting}
+          >
+            <Text style={styles.statusButtonText}>🔓 Reabrir Ticket</Text>
+          </TouchableOpacity>
+        )}
+
+        {canEditTicket() && (
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() =>
+              router.push({
+                pathname: "/create-ticket",
+                params: { ticketId: ticket.id },
+              })
+            }
+          >
+            <Text style={styles.editButtonText}>✏️ Editar Ticket</Text>
+          </TouchableOpacity>
+        )}
+
+        {can.createFeedback &&
+          (ticket.status === "resolved" || ticket.status === "closed") && (
+            <TouchableOpacity
+              style={styles.feedbackButton}
+              onPress={() =>
+                router.push({
+                  pathname: "/create-feedback",
+                  params: {
+                    ticketId: ticket.id,
+                    ticketNumber: ticket.ticket_number,
+                  },
+                })
+              }
+            >
+              <Text style={styles.feedbackButtonText}>
+                ⭐ Calificar Servicio
+              </Text>
+            </TouchableOpacity>
+          )}
       </View>
     </ScrollView>
   );
@@ -180,26 +446,29 @@ const TicketDetailScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
+  },
+  scrollContent: {
+    paddingBottom: 30,
   },
   centerContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 15,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
+    borderBottomColor: "#ddd",
   },
   ticketNumber: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   statusBadge: {
     paddingHorizontal: 12,
@@ -207,106 +476,172 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   statusText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   section: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     padding: 15,
     marginTop: 10,
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 10,
   },
   description: {
     fontSize: 16,
-    color: '#666',
+    color: "#666",
     lineHeight: 24,
   },
   infoSection: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     padding: 15,
     marginTop: 10,
   },
   infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 10,
   },
   infoLabel: {
     fontSize: 14,
-    color: '#666',
-    fontWeight: '600',
+    color: "#666",
+    fontWeight: "600",
   },
   infoValue: {
     fontSize: 14,
-    color: '#333',
+    color: "#333",
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 15,
   },
   commentCard: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: "#f9f9f9",
     padding: 12,
     borderRadius: 8,
     marginBottom: 10,
   },
   commentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 5,
+  },
+  commentAuthorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   commentAuthor: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
+  },
+  internalBadge: {
+    backgroundColor: "#FF9800",
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "600",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   commentDate: {
     fontSize: 12,
-    color: '#999',
+    color: "#999",
   },
   commentText: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     lineHeight: 20,
   },
   commentInputContainer: {
     marginTop: 15,
   },
   commentInput: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: "#f9f9f9",
     borderRadius: 8,
     padding: 12,
     fontSize: 14,
     minHeight: 80,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
     marginBottom: 10,
   },
+  internalToggle: {
+    backgroundColor: "#f0f0f0",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 10,
+    alignItems: "center",
+  },
+  internalToggleText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+  },
   commentButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
     padding: 12,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   commentButtonText: {
-    color: '#fff',
-    fontWeight: '600',
+    color: "#fff",
+    fontWeight: "600",
+  },
+  statusButton: {
+    padding: 15,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  statusButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  statusButtonsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
+  halfButton: {
+    width: "48%",
+  },
+  editButton: {
+    backgroundColor: "#FF9800",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  editButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+  feedbackButton: {
+    backgroundColor: "#4CAF50",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  feedbackButtonText: {
+    color: "#fff",
+    fontWeight: "600",
   },
   errorText: {
     fontSize: 16,
-    color: '#F44336',
+    color: "#F44336",
   },
 });
 
 export default TicketDetailScreen;
-

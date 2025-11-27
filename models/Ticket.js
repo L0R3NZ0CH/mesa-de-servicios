@@ -19,7 +19,6 @@ class Ticket {
       incident_type_id,
       created_by,
       assigned_to,
-      department,
     } = ticketData;
 
     // Obtener tiempos de SLA para la prioridad
@@ -41,8 +40,8 @@ class Ticket {
 
     const sql = `INSERT INTO tickets 
                  (ticket_number, title, description, priority_id, category_id, incident_type_id, 
-                  created_by, assigned_to, department, sla_response_deadline, sla_resolution_deadline) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+                  created_by, assigned_to, sla_response_deadline, sla_resolution_deadline) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
     const result = await query(sql, [
       ticketNumber,
@@ -53,7 +52,6 @@ class Ticket {
       incident_type_id || null,
       created_by,
       assigned_to || null,
-      department || null,
       slaResponseDeadline,
       slaResolutionDeadline,
     ]);
@@ -102,6 +100,25 @@ class Ticket {
                WHERE 1=1`;
     const params = [];
 
+    // Filtros específicos por rol
+    if (filters.user_role === "user") {
+      // Los usuarios solo ven tickets que crearon
+      sql += " AND t.created_by = ?";
+      params.push(filters.user_id);
+    } else if (filters.user_role === "technician") {
+      // Los técnicos ven tickets de su categoría O asignados a ellos
+      if (filters.user_specialty) {
+        sql += " AND (c.name = ? OR t.assigned_to = ?)";
+        params.push(filters.user_specialty);
+        params.push(filters.user_id);
+      } else {
+        // Si no tiene specialty, solo ve los asignados
+        sql += " AND t.assigned_to = ?";
+        params.push(filters.user_id);
+      }
+    }
+    // Admin ve todos (no agrega filtro)
+
     if (filters.status) {
       sql += " AND t.status = ?";
       params.push(filters.status);
@@ -117,19 +134,19 @@ class Ticket {
       params.push(filters.category_id);
     }
 
-    if (filters.created_by) {
+    if (filters.created_by && !filters.user_role) {
       sql += " AND t.created_by = ?";
       params.push(filters.created_by);
     }
 
-    if (filters.assigned_to) {
+    if (filters.assigned_to && !filters.user_role) {
       sql += " AND t.assigned_to = ?";
       params.push(filters.assigned_to);
     }
 
-    if (filters.department) {
-      sql += " AND t.department = ?";
-      params.push(filters.department);
+    if (filters.department_id) {
+      sql += " AND u1.department_id = ?";
+      params.push(filters.department_id);
     }
 
     if (filters.date_from) {

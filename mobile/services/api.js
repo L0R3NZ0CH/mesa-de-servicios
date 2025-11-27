@@ -1,8 +1,12 @@
-import axios from 'axios';
-import { API_BASE_URL } from '../config/api';
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { API_BASE_URL } from "../config/api";
 
 // Variable global para almacenar el token en memoria
 let authToken = null;
+
+// Callback para manejar logout desde el interceptor
+let onLogoutCallback = null;
 
 // Función para establecer el token
 export const setAuthToken = (token) => {
@@ -14,12 +18,17 @@ export const getAuthToken = () => {
   return authToken;
 };
 
+// Función para registrar callback de logout
+export const setLogoutCallback = (callback) => {
+  onLogoutCallback = callback;
+};
+
 // Crear instancia de axios
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
@@ -39,10 +48,22 @@ api.interceptors.request.use(
 // Interceptor para manejar errores de respuesta
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
       // Token expirado o inválido
       authToken = null;
+
+      // Limpiar AsyncStorage
+      try {
+        await AsyncStorage.multiRemove(["@auth_token", "@auth_user"]);
+      } catch (storageError) {
+        console.error("Error clearing storage on 401:", storageError);
+      }
+
+      // Ejecutar callback de logout si existe
+      if (onLogoutCallback) {
+        onLogoutCallback();
+      }
     }
     return Promise.reject(error);
   }
@@ -51,27 +72,27 @@ api.interceptors.response.use(
 // Servicios de Autenticación
 export const authService = {
   login: async (email, password) => {
-    const response = await api.post('/auth/login', { email, password });
+    const response = await api.post("/auth/login", { email, password });
     return response.data;
   },
 
   register: async (userData) => {
-    const response = await api.post('/auth/register', userData);
+    const response = await api.post("/auth/register", userData);
     return response.data;
   },
 
   getProfile: async () => {
-    const response = await api.get('/auth/profile');
+    const response = await api.get("/auth/profile");
     return response.data;
   },
 
   updateProfile: async (profileData) => {
-    const response = await api.put('/auth/profile', profileData);
+    const response = await api.put("/auth/profile", profileData);
     return response.data;
   },
 
   changePassword: async (currentPassword, newPassword) => {
-    const response = await api.put('/auth/change-password', {
+    const response = await api.put("/auth/change-password", {
       currentPassword,
       newPassword,
     });
@@ -79,7 +100,7 @@ export const authService = {
   },
 
   forgotPassword: async (email) => {
-    const response = await api.post('/auth/forgot-password', { email });
+    const response = await api.post("/auth/forgot-password", { email });
     return response.data;
   },
 };
@@ -88,7 +109,7 @@ export const authService = {
 export const ticketService = {
   getAll: async (filters = {}) => {
     const params = new URLSearchParams();
-    Object.keys(filters).forEach(key => {
+    Object.keys(filters).forEach((key) => {
       if (filters[key] !== undefined && filters[key] !== null) {
         params.append(key, filters[key]);
       }
@@ -103,7 +124,7 @@ export const ticketService = {
   },
 
   create: async (ticketData) => {
-    const response = await api.post('/tickets', ticketData);
+    const response = await api.post("/tickets", ticketData);
     return response.data;
   },
 
@@ -122,24 +143,28 @@ export const ticketService = {
 
   uploadAttachment: async (ticketId, file) => {
     const formData = new FormData();
-    formData.append('file', {
+    formData.append("file", {
       uri: file.uri,
-      type: file.type || 'image/jpeg',
-      name: file.name || 'attachment.jpg',
+      type: file.type || "image/jpeg",
+      name: file.name || "attachment.jpg",
     });
-    formData.append('ticket_id', ticketId.toString());
+    formData.append("ticket_id", ticketId.toString());
 
-    const response = await api.post(`/tickets/${ticketId}/attachments`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const response = await api.post(
+      `/tickets/${ticketId}/attachments`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
     return response.data;
   },
 
   getStatistics: async (filters = {}) => {
     const params = new URLSearchParams();
-    Object.keys(filters).forEach(key => {
+    Object.keys(filters).forEach((key) => {
       if (filters[key]) params.append(key, filters[key]);
     });
     const response = await api.get(`/tickets/statistics?${params.toString()}`);
@@ -151,7 +176,7 @@ export const ticketService = {
 export const technicianService = {
   getAll: async (filters = {}) => {
     const params = new URLSearchParams();
-    Object.keys(filters).forEach(key => {
+    Object.keys(filters).forEach((key) => {
       if (filters[key] !== undefined) params.append(key, filters[key]);
     });
     const response = await api.get(`/technicians?${params.toString()}`);
@@ -164,7 +189,7 @@ export const technicianService = {
   },
 
   create: async (technicianData) => {
-    const response = await api.post('/technicians', technicianData);
+    const response = await api.post("/technicians", technicianData);
     return response.data;
   },
 
@@ -187,10 +212,12 @@ export const technicianService = {
 
   getMyTickets: async (filters = {}) => {
     const params = new URLSearchParams();
-    Object.keys(filters).forEach(key => {
+    Object.keys(filters).forEach((key) => {
       if (filters[key]) params.append(key, filters[key]);
     });
-    const response = await api.get(`/technicians/me/tickets?${params.toString()}`);
+    const response = await api.get(
+      `/technicians/me/tickets?${params.toString()}`
+    );
     return response.data;
   },
 };
@@ -199,7 +226,7 @@ export const technicianService = {
 export const knowledgeBaseService = {
   getAll: async (filters = {}) => {
     const params = new URLSearchParams();
-    Object.keys(filters).forEach(key => {
+    Object.keys(filters).forEach((key) => {
       if (filters[key]) params.append(key, filters[key]);
     });
     const response = await api.get(`/knowledge-base?${params.toString()}`);
@@ -212,7 +239,7 @@ export const knowledgeBaseService = {
   },
 
   create: async (articleData) => {
-    const response = await api.post('/knowledge-base', articleData);
+    const response = await api.post("/knowledge-base", articleData);
     return response.data;
   },
 
@@ -225,12 +252,17 @@ export const knowledgeBaseService = {
     const response = await api.post(`/knowledge-base/${id}/helpful`);
     return response.data;
   },
+
+  delete: async (id) => {
+    const response = await api.delete(`/knowledge-base/${id}`);
+    return response.data;
+  },
 };
 
 // Servicios de Feedback
 export const feedbackService = {
   create: async (feedbackData) => {
-    const response = await api.post('/feedback', feedbackData);
+    const response = await api.post("/feedback", feedbackData);
     return response.data;
   },
 
@@ -241,19 +273,26 @@ export const feedbackService = {
 
   getByTechnician: async (technicianId, filters = {}) => {
     const params = new URLSearchParams();
-    Object.keys(filters).forEach(key => {
+    Object.keys(filters).forEach((key) => {
       if (filters[key]) params.append(key, filters[key]);
     });
-    const response = await api.get(`/feedback/technician/${technicianId}?${params.toString()}`);
+    const response = await api.get(
+      `/feedback/technician/${technicianId}?${params.toString()}`
+    );
     return response.data;
   },
 
   getStatistics: async (filters = {}) => {
     const params = new URLSearchParams();
-    Object.keys(filters).forEach(key => {
+    Object.keys(filters).forEach((key) => {
       if (filters[key]) params.append(key, filters[key]);
     });
     const response = await api.get(`/feedback/statistics?${params.toString()}`);
+    return response.data;
+  },
+
+  getTechnicianFeedback: async (technicianId) => {
+    const response = await api.get(`/feedback/technician/${technicianId}`);
     return response.data;
   },
 };
@@ -261,53 +300,104 @@ export const feedbackService = {
 // Servicios de Reportes
 export const reportService = {
   getTicketReport: async (dateFrom, dateTo) => {
-    const response = await api.get('/reports/tickets', {
+    const response = await api.get("/reports/tickets", {
       params: { date_from: dateFrom, date_to: dateTo },
     });
     return response.data;
   },
 
   getSLAReport: async (dateFrom, dateTo) => {
-    const response = await api.get('/reports/sla', {
+    const response = await api.get("/reports/sla", {
       params: { date_from: dateFrom, date_to: dateTo },
     });
     return response.data;
   },
 
   getTechnicianReport: async (dateFrom, dateTo) => {
-    const response = await api.get('/reports/technicians', {
+    const response = await api.get("/reports/technicians", {
       params: { date_from: dateFrom, date_to: dateTo },
     });
     return response.data;
   },
 
   getIncidentReport: async (dateFrom, dateTo) => {
-    const response = await api.get('/reports/incidents', {
+    const response = await api.get("/reports/incidents", {
       params: { date_from: dateFrom, date_to: dateTo },
     });
     return response.data;
+  },
+
+  getTechnicianStats: async () => {
+    const response = await api.get("/reports/technician-stats");
+    return response.data;
+  },
+
+  getIncidentReports: async () => {
+    const response = await api.get("/reports/incident-reports");
+    return response.data;
+  },
+
+  getFeedbackReports: async () => {
+    const response = await api.get("/reports/feedback-reports");
+    return response.data;
+  },
+
+  // Exportación CSV
+  exportTicketsCSV: async (dateFrom, dateTo) => {
+    const params = new URLSearchParams();
+    if (dateFrom) params.append("date_from", dateFrom);
+    if (dateTo) params.append("date_to", dateTo);
+    return `${API_BASE_URL}/reports/export/tickets/csv?${params.toString()}`;
+  },
+
+  exportSLACSV: async (dateFrom, dateTo) => {
+    const params = new URLSearchParams();
+    if (dateFrom) params.append("date_from", dateFrom);
+    if (dateTo) params.append("date_to", dateTo);
+    return `${API_BASE_URL}/reports/export/sla/csv?${params.toString()}`;
+  },
+
+  exportTechniciansCSV: async (dateFrom, dateTo) => {
+    const params = new URLSearchParams();
+    if (dateFrom) params.append("date_from", dateFrom);
+    if (dateTo) params.append("date_to", dateTo);
+    return `${API_BASE_URL}/reports/export/technicians/csv?${params.toString()}`;
+  },
+
+  exportIncidentsCSV: async (dateFrom, dateTo) => {
+    const params = new URLSearchParams();
+    if (dateFrom) params.append("date_from", dateFrom);
+    if (dateTo) params.append("date_to", dateTo);
+    return `${API_BASE_URL}/reports/export/incidents/csv?${params.toString()}`;
+  },
+
+  exportFeedbackCSV: async (dateFrom, dateTo) => {
+    const params = new URLSearchParams();
+    if (dateFrom) params.append("date_from", dateFrom);
+    if (dateTo) params.append("date_to", dateTo);
+    return `${API_BASE_URL}/reports/export/feedback/csv?${params.toString()}`;
   },
 };
 
 // Servicios de SLA
 export const slaService = {
   getConfig: async () => {
-    const response = await api.get('/sla/config');
+    const response = await api.get("/sla/config");
     return response.data;
   },
 
   updateConfig: async (configData) => {
-    const response = await api.put('/sla/config', configData);
+    const response = await api.put("/sla/config", configData);
     return response.data;
   },
 
   checkSLA: async () => {
-    const response = await api.get('/sla/check');
+    const response = await api.get("/sla/check");
     return response.data;
   },
 
   getCompliance: async (dateFrom, dateTo) => {
-    const response = await api.get('/sla/compliance', {
+    const response = await api.get("/sla/compliance", {
       params: { date_from: dateFrom, date_to: dateTo },
     });
     return response.data;
@@ -318,7 +408,7 @@ export const slaService = {
 export const notificationService = {
   getAll: async (filters = {}) => {
     const params = new URLSearchParams();
-    Object.keys(filters).forEach(key => {
+    Object.keys(filters).forEach((key) => {
       if (filters[key] !== undefined) params.append(key, filters[key]);
     });
     const response = await api.get(`/notifications?${params.toString()}`);
@@ -331,7 +421,7 @@ export const notificationService = {
   },
 
   markAllAsRead: async () => {
-    const response = await api.put('/notifications/read-all');
+    const response = await api.put("/notifications/read-all");
     return response.data;
   },
 
@@ -344,7 +434,7 @@ export const notificationService = {
 // Servicios de Categorías
 export const categoryService = {
   getAll: async () => {
-    const response = await api.get('/categories');
+    const response = await api.get("/categories");
     return response.data;
   },
 
@@ -354,12 +444,55 @@ export const categoryService = {
   },
 
   create: async (categoryData) => {
-    const response = await api.post('/categories', categoryData);
+    const response = await api.post("/categories", categoryData);
     return response.data;
   },
 
   update: async (id, categoryData) => {
     const response = await api.put(`/categories/${id}`, categoryData);
+    return response.data;
+  },
+
+  delete: async (id) => {
+    const response = await api.delete(`/categories/${id}`);
+    return response.data;
+  },
+};
+
+// Servicios de Departamentos
+export const departmentService = {
+  getAll: async () => {
+    const response = await api.get("/departments");
+    return response.data;
+  },
+
+  getById: async (id) => {
+    const response = await api.get(`/departments/${id}`);
+    return response.data;
+  },
+
+  create: async (departmentData) => {
+    const response = await api.post("/departments", departmentData);
+    return response.data;
+  },
+
+  update: async (id, departmentData) => {
+    const response = await api.put(`/departments/${id}`, departmentData);
+    return response.data;
+  },
+
+  delete: async (id) => {
+    const response = await api.delete(`/departments/${id}`);
+    return response.data;
+  },
+
+  getUsers: async (id) => {
+    const response = await api.get(`/departments/${id}/users`);
+    return response.data;
+  },
+
+  search: async (query) => {
+    const response = await api.get(`/departments/search?q=${query}`);
     return response.data;
   },
 };
@@ -368,7 +501,7 @@ export const categoryService = {
 export const userService = {
   getAll: async (filters = {}) => {
     const params = new URLSearchParams();
-    Object.keys(filters).forEach(key => {
+    Object.keys(filters).forEach((key) => {
       if (filters[key]) params.append(key, filters[key]);
     });
     const response = await api.get(`/users?${params.toString()}`);
@@ -384,7 +517,11 @@ export const userService = {
     const response = await api.put(`/users/${id}`, userData);
     return response.data;
   },
+
+  delete: async (id) => {
+    const response = await api.delete(`/users/${id}`);
+    return response.data;
+  },
 };
 
 export default api;
-

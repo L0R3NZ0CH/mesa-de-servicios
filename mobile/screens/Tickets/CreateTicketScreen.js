@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,30 +6,43 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
   ActivityIndicator,
   Picker,
-} from 'react-native';
-import { useAuth } from '../../context/AuthContext';
-import { ticketService, categoryService } from '../../services/api';
-import * as DocumentPicker from 'expo-document-picker';
-import * as ImagePicker from 'expo-image-picker';
+} from "react-native";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { useAuth } from "../../context/AuthContext";
+import {
+  ticketService,
+  categoryService,
+  departmentService,
+} from "../../services/api";
+import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
 
-const CreateTicketScreen = ({ navigation }) => {
+const CreateTicketScreen = () => {
+  const router = useRouter();
+  const params = useLocalSearchParams();
   const { user } = useAuth();
+  const ticketId = params?.ticketId;
+  const isEditMode = !!ticketId;
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
+    title: "",
+    description: "",
     priority_id: 2, // Media por defecto
     category_id: null,
-    department: user?.department || '',
+    department_id: user?.department_id || null,
   });
   const [attachments, setAttachments] = useState([]);
 
   useEffect(() => {
     loadCategories();
+    loadDepartments();
+    if (isEditMode) {
+      loadTicket();
+    }
   }, []);
 
   const loadCategories = async () => {
@@ -37,103 +50,182 @@ const CreateTicketScreen = ({ navigation }) => {
       const response = await categoryService.getAll();
       if (response.success) {
         setCategories(response.data.categories || []);
-        if (response.data.categories?.length > 0) {
-          setFormData(prev => ({
+        if (response.data.categories?.length > 0 && !isEditMode) {
+          setFormData((prev) => ({
             ...prev,
             category_id: response.data.categories[0].id,
           }));
         }
       }
     } catch (error) {
-      console.error('Error loading categories:', error);
+      console.error("Error loading categories:", error);
+    }
+  };
+
+  const loadDepartments = async () => {
+    try {
+      const response = await departmentService.getAll();
+      if (response.success) {
+        setDepartments(response.data.departments || []);
+        // Si el usuario tiene departamento pero no está en formData, asignarlo
+        if (user?.department_id && !formData.department_id && !isEditMode) {
+          setFormData((prev) => ({
+            ...prev,
+            department_id: user.department_id,
+          }));
+        }
+      }
+    } catch (error) {
+      console.error("Error loading departments:", error);
+    }
+  };
+
+  const loadTicket = async () => {
+    try {
+      setLoading(true);
+      const response = await ticketService.getById(ticketId);
+      if (response.success && response.data.ticket) {
+        const ticket = response.data.ticket;
+        setFormData({
+          title: ticket.title || "",
+          description: ticket.description || "",
+          priority_id: ticket.priority_id || 2,
+          category_id: ticket.category_id || null,
+          department_id: ticket.department_id || user?.department_id || null,
+        });
+      }
+    } catch (error) {
+      console.error("Error loading ticket:", error);
+      alert("No se pudo cargar el ticket");
+    } finally {
+      setLoading(false);
     }
   };
 
   const pickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*',
+        type: "*/*",
         copyToCacheDirectory: true,
       });
 
-      if (!result.canceled && result.assets) {
-        setAttachments(prev => [...prev, ...result.assets]);
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setAttachments((prev) => [...prev, ...result.assets]);
+      } else if (!result.canceled && result.uri) {
+        // Fallback para versiones antiguas de expo-document-picker
+        setAttachments((prev) => [...prev, result]);
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo seleccionar el archivo');
+      console.error("Error picking document:", error);
+      alert("No se pudo seleccionar el archivo");
     }
   };
 
   const pickImage = async () => {
     try {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        alert("Se necesita permiso para acceder a las imágenes");
+        return;
+      }
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         quality: 0.8,
       });
 
-      if (!result.canceled && result.assets) {
-        setAttachments(prev => [...prev, ...result.assets]);
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setAttachments((prev) => [...prev, ...result.assets]);
+      } else if (!result.canceled && result.uri) {
+        // Fallback para versiones antiguas
+        setAttachments((prev) => [...prev, result]);
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo seleccionar la imagen');
+      console.error("Error picking image:", error);
+      alert("No se pudo seleccionar la imagen");
     }
   };
 
   const removeAttachment = (index) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
     if (!formData.title || !formData.description || !formData.category_id) {
-      Alert.alert('Error', 'Por favor completa todos los campos obligatorios');
+      alert("Por favor completa todos los campos obligatorios");
       return;
     }
 
     setLoading(true);
     try {
-      // Primero crear el ticket
-      const result = await ticketService.create(formData);
-      
-      if (result.success && result.data?.ticket?.id) {
-        const ticketId = result.data.ticket.id;
-        
-        // Subir archivos adjuntos si hay
-        if (attachments.length > 0) {
+      // Crear o actualizar el ticket
+      const result = isEditMode
+        ? await ticketService.update(ticketId, formData)
+        : await ticketService.create(formData);
+
+      if (result.success && (isEditMode || result.data?.ticket?.id)) {
+        const currentTicketId = isEditMode ? ticketId : result.data.ticket.id;
+        let uploadErrors = [];
+
+        // Subir archivos adjuntos si hay (solo en modo creación)
+        if (attachments.length > 0 && !isEditMode) {
           for (const attachment of attachments) {
             try {
-              const fileExtension = attachment.uri.split('.').pop();
-              const fileType = attachment.type || attachment.mimeType || 'image/jpeg';
-              const fileName = attachment.name || attachment.fileName || `attachment_${Date.now()}.${fileExtension}`;
-              
-              await ticketService.uploadAttachment(ticketId, {
-                uri: attachment.uri,
+              const uri = attachment.uri;
+              const fileExtension = uri ? uri.split(".").pop() : "jpg";
+              const fileType =
+                attachment.type || attachment.mimeType || "image/jpeg";
+              const fileName =
+                attachment.name ||
+                attachment.fileName ||
+                `attachment_${Date.now()}.${fileExtension}`;
+
+              await ticketService.uploadAttachment(currentTicketId, {
+                uri,
                 type: fileType,
                 name: fileName,
               });
             } catch (error) {
-              console.error('Error uploading attachment:', error);
+              console.error("Error uploading attachment:", error);
+              uploadErrors.push(attachment.name || "archivo");
               // Continuar con los demás archivos aunque uno falle
             }
           }
         }
 
-        Alert.alert('Éxito', 'Ticket creado exitosamente', [
-          { text: 'OK', onPress: () => navigation.goBack() },
-        ]);
+        let message = isEditMode
+          ? "Ticket actualizado exitosamente"
+          : "Ticket creado exitosamente";
+        if (uploadErrors.length > 0) {
+          message +=
+            "\n\nAlgunos archivos no se pudieron subir: " +
+            uploadErrors.join(", ");
+        }
+
+        alert(message);
+        router.back();
       } else {
-        Alert.alert('Error', result.message || 'Error al crear ticket');
+        alert(result.message || "Error al crear ticket");
       }
     } catch (error) {
-      console.error('Error creating ticket:', error);
-      Alert.alert('Error', error.message || 'Error de conexión. Verifica tu conexión a internet.');
+      console.error("Error creating ticket:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Error de conexión. Verifica tu conexión a internet.";
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+    >
       <View style={styles.form}>
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Título *</Text>
@@ -141,7 +233,9 @@ const CreateTicketScreen = ({ navigation }) => {
             style={styles.input}
             placeholder="Describe brevemente el problema"
             value={formData.title}
-            onChangeText={(value) => setFormData(prev => ({ ...prev, title: value }))}
+            onChangeText={(value) =>
+              setFormData((prev) => ({ ...prev, title: value }))
+            }
           />
         </View>
 
@@ -151,7 +245,9 @@ const CreateTicketScreen = ({ navigation }) => {
             style={[styles.input, styles.textArea]}
             placeholder="Describe el problema en detalle..."
             value={formData.description}
-            onChangeText={(value) => setFormData(prev => ({ ...prev, description: value }))}
+            onChangeText={(value) =>
+              setFormData((prev) => ({ ...prev, description: value }))
+            }
             multiline
             numberOfLines={6}
             textAlignVertical="top"
@@ -163,7 +259,9 @@ const CreateTicketScreen = ({ navigation }) => {
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={formData.category_id}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, category_id: value }))}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, category_id: value }))
+              }
               style={styles.picker}
             >
               {categories.map((cat) => (
@@ -178,7 +276,9 @@ const CreateTicketScreen = ({ navigation }) => {
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={formData.priority_id}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, priority_id: value }))}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, priority_id: value }))
+              }
               style={styles.picker}
             >
               <Picker.Item label="Baja" value={1} />
@@ -191,12 +291,20 @@ const CreateTicketScreen = ({ navigation }) => {
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Departamento</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="IT"
-            value={formData.department}
-            onChangeText={(value) => setFormData(prev => ({ ...prev, department: value }))}
-          />
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={formData.department_id}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, department_id: value }))
+              }
+              style={styles.picker}
+            >
+              <Picker.Item label="Seleccionar departamento" value={null} />
+              {departments.map((dept) => (
+                <Picker.Item key={dept.id} label={dept.name} value={dept.id} />
+              ))}
+            </Picker>
+          </View>
         </View>
 
         <View style={styles.inputContainer}>
@@ -254,7 +362,10 @@ const CreateTicketScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
+  },
+  scrollContent: {
+    paddingBottom: 30,
   },
   form: {
     padding: 15,
@@ -264,56 +375,56 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     padding: 15,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
   },
   textArea: {
     height: 120,
     paddingTop: 15,
   },
   pickerContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
-    overflow: 'hidden',
+    borderColor: "#ddd",
+    overflow: "hidden",
   },
   picker: {
     height: 50,
   },
   attachmentButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 10,
     marginTop: 10,
   },
   attachmentButton: {
     flex: 1,
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
     padding: 12,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   attachmentButtonText: {
-    color: '#fff',
-    fontWeight: '600',
+    color: "#fff",
+    fontWeight: "600",
   },
   attachmentsList: {
     marginTop: 10,
   },
   attachmentItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#fff',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#fff",
     padding: 10,
     borderRadius: 8,
     marginBottom: 5,
@@ -321,32 +432,31 @@ const styles = StyleSheet.create({
   attachmentName: {
     flex: 1,
     fontSize: 14,
-    color: '#333',
+    color: "#333",
   },
   removeButton: {
     padding: 5,
   },
   removeButtonText: {
-    color: '#F44336',
+    color: "#F44336",
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   submitButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
     borderRadius: 8,
     padding: 15,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 10,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   submitButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
 
 export default CreateTicketScreen;
-

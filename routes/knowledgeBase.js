@@ -3,13 +3,14 @@ const router = express.Router();
 const knowledgeBaseController = require('../controllers/knowledgeBaseController');
 const { authenticate, authorize } = require('../middleware/auth');
 
-// Rutas públicas (solo lectura)
+// Todas las rutas requieren autenticación para tracking
+router.use(authenticate);
+
+// Rutas de lectura (autenticadas para tracking de vistas/likes)
 router.get('/', knowledgeBaseController.getAll);
 router.get('/:id', knowledgeBaseController.getById);
 
-// Rutas protegidas
-router.use(authenticate);
-
+// Rutas de escritura (requieren permisos adicionales)
 router.post('/', authorize('admin', 'technician'), knowledgeBaseController.create);
 router.put('/:id', authorize('admin', 'technician'), knowledgeBaseController.update);
 router.delete('/:id', authorize('admin'), knowledgeBaseController.delete);

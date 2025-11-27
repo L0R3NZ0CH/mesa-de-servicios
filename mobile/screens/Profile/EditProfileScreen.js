@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,63 +6,76 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
   ActivityIndicator,
-} from 'react-native';
-import { useAuth } from '../../context/AuthContext';
+} from "react-native";
+import { useRouter } from "expo-router";
+import { useAuth } from "../../context/AuthContext";
 
-const EditProfileScreen = ({ navigation }) => {
+const EditProfileScreen = () => {
+  const router = useRouter();
   const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: '',
-    department: '',
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone: "",
+    department: "",
   });
+
+  const isTechnician = user?.role === "technician";
 
   useEffect(() => {
     if (user) {
       setFormData({
-        first_name: user.first_name || '',
-        last_name: user.last_name || '',
-        email: user.email || '',
-        phone: user.phone || '',
-        department: user.department || '',
+        first_name: user.first_name || "",
+        last_name: user.last_name || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        department: user.department || "",
       });
     }
   }, [user]);
 
   const handleUpdate = async () => {
-    if (!formData.first_name || !formData.last_name || !formData.email) {
-      Alert.alert('Error', 'Por favor completa los campos obligatorios');
+    if (!formData.first_name || !formData.last_name) {
+      alert("Por favor completa los campos obligatorios");
       return;
     }
 
     setLoading(true);
     try {
-      const result = await updateUser(formData);
+      // No enviar email ni department para técnicos
+      const { email, department, ...updateData } = formData;
+
+      // Solo incluir department si no es técnico
+      if (!isTechnician) {
+        updateData.department = department;
+      }
+
+      const result = await updateUser(updateData);
       if (result.success) {
-        Alert.alert('Éxito', 'Perfil actualizado exitosamente', [
-          { text: 'OK', onPress: () => navigation.goBack() },
-        ]);
+        alert("Perfil actualizado exitosamente");
+        router.back();
       } else {
-        Alert.alert('Error', result.message || 'Error al actualizar perfil');
+        alert(result.message || "Error al actualizar perfil");
       }
     } catch (error) {
-      Alert.alert('Error', 'Error de conexión. Verifica tu conexión a internet.');
+      alert("Error de conexión. Verifica tu conexión a internet.");
     } finally {
       setLoading(false);
     }
   };
 
   const updateField = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+    >
       <View style={styles.form}>
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Nombre *</Text>
@@ -70,7 +83,7 @@ const EditProfileScreen = ({ navigation }) => {
             style={styles.input}
             placeholder="Nombre"
             value={formData.first_name}
-            onChangeText={(value) => updateField('first_name', value)}
+            onChangeText={(value) => updateField("first_name", value)}
           />
         </View>
 
@@ -80,17 +93,17 @@ const EditProfileScreen = ({ navigation }) => {
             style={styles.input}
             placeholder="Apellido"
             value={formData.last_name}
-            onChangeText={(value) => updateField('last_name', value)}
+            onChangeText={(value) => updateField("last_name", value)}
           />
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Email *</Text>
+          <Text style={styles.label}>Email (no editable)</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.disabledInput]}
             placeholder="email@ejemplo.com"
             value={formData.email}
-            onChangeText={(value) => updateField('email', value)}
+            editable={false}
             keyboardType="email-address"
             autoCapitalize="none"
           />
@@ -102,20 +115,35 @@ const EditProfileScreen = ({ navigation }) => {
             style={styles.input}
             placeholder="1234567890"
             value={formData.phone}
-            onChangeText={(value) => updateField('phone', value)}
+            onChangeText={(value) => updateField("phone", value)}
             keyboardType="phone-pad"
           />
         </View>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Departamento</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="IT"
-            value={formData.department}
-            onChangeText={(value) => updateField('department', value)}
-          />
-        </View>
+        {!isTechnician ? (
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Departamento</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="IT"
+              value={formData.department}
+              onChangeText={(value) => updateField("department", value)}
+            />
+          </View>
+        ) : (
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Especialidad (no editable)</Text>
+            <TextInput
+              style={[styles.input, styles.disabledInput]}
+              placeholder="Hardware, Software, Redes..."
+              value={user?.specialty || "No asignada"}
+              editable={false}
+            />
+            <Text style={styles.helperText}>
+              Tu especialidad determina qué tickets puedes ver y atender
+            </Text>
+          </View>
+        )}
 
         <TouchableOpacity
           style={[styles.button, loading && styles.buttonDisabled]}
@@ -136,7 +164,10 @@ const EditProfileScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
+  },
+  scrollContent: {
+    paddingBottom: 30,
   },
   form: {
     padding: 15,
@@ -146,34 +177,43 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     padding: 15,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
   },
   button: {
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
     borderRadius: 8,
     padding: 15,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 10,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
+  },
+  disabledInput: {
+    backgroundColor: "#f0f0f0",
+    color: "#999",
+  },
+  helperText: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 5,
+    fontStyle: "italic",
   },
 });
 
 export default EditProfileScreen;
-

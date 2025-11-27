@@ -80,7 +80,8 @@ class KnowledgeBaseController {
 
   async getById(req, res) {
     try {
-      const article = await KnowledgeBase.findById(req.params.id);
+      const article = await KnowledgeBase.findById(req.params.id, req.user.id);
+      
       if (!article) {
         return res.status(404).json({
           success: false,
@@ -140,17 +141,17 @@ class KnowledgeBaseController {
 
   async markHelpful(req, res) {
     try {
-      const article = await KnowledgeBase.incrementHelpful(req.params.id);
+      const article = await KnowledgeBase.incrementHelpful(req.params.id, req.user.id);
       res.json({
         success: true,
         message: "Gracias por tu feedback",
         data: { article },
       });
     } catch (error) {
-      res.status(500).json({
+      const statusCode = error.message === "Ya has marcado este artículo como útil" ? 409 : 500;
+      res.status(statusCode).json({
         success: false,
-        message: "Error al marcar como útil",
-        error: error.message,
+        message: error.message || "Error al marcar como útil",
       });
     }
   }

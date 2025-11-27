@@ -1,5 +1,5 @@
-const Feedback = require('../models/Feedback');
-const Ticket = require('../models/Ticket');
+const Feedback = require("../models/Feedback");
+const Ticket = require("../models/Ticket");
 
 class FeedbackController {
   async create(req, res) {
@@ -8,15 +8,15 @@ class FeedbackController {
       if (!ticket) {
         return res.status(404).json({
           success: false,
-          message: 'Ticket no encontrado'
+          message: "Ticket no encontrado",
         });
       }
 
-      // Verificar que el ticket esté cerrado
-      if (ticket.status !== 'closed') {
+      // Verificar que el ticket esté resuelto o cerrado
+      if (ticket.status !== "closed" && ticket.status !== "resolved") {
         return res.status(400).json({
           success: false,
-          message: 'Solo se puede dar feedback a tickets cerrados'
+          message: "Solo se puede dar feedback a tickets resueltos o cerrados",
         });
       }
 
@@ -24,7 +24,7 @@ class FeedbackController {
       if (ticket.created_by !== req.user.id) {
         return res.status(403).json({
           success: false,
-          message: 'Solo el creador del ticket puede dar feedback'
+          message: "Solo el creador del ticket puede dar feedback",
         });
       }
 
@@ -33,7 +33,7 @@ class FeedbackController {
       if (existingFeedback) {
         return res.status(409).json({
           success: false,
-          message: 'Ya existe feedback para este ticket'
+          message: "Ya existe feedback para este ticket",
         });
       }
 
@@ -44,19 +44,19 @@ class FeedbackController {
         rating: req.body.rating,
         comment: req.body.comment,
         response_time_rating: req.body.response_time_rating,
-        resolution_quality_rating: req.body.resolution_quality_rating
+        resolution_quality_rating: req.body.resolution_quality_rating,
       });
 
       res.status(201).json({
         success: true,
-        message: 'Feedback registrado exitosamente',
-        data: { feedback }
+        message: "Feedback registrado exitosamente",
+        data: { feedback },
       });
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error al crear feedback',
-        error: error.message
+        message: "Error al crear feedback",
+        error: error.message,
       });
     }
   }
@@ -67,19 +67,19 @@ class FeedbackController {
       if (!feedback) {
         return res.status(404).json({
           success: false,
-          message: 'Feedback no encontrado'
+          message: "Feedback no encontrado",
         });
       }
 
       res.json({
         success: true,
-        data: { feedback }
+        data: { feedback },
       });
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error al obtener feedback',
-        error: error.message
+        message: "Error al obtener feedback",
+        error: error.message,
       });
     }
   }
@@ -88,20 +88,23 @@ class FeedbackController {
     try {
       const filters = {
         date_from: req.query.date_from,
-        date_to: req.query.date_to
+        date_to: req.query.date_to,
       };
 
-      const feedbacks = await Feedback.findByTechnician(req.params.technicianId, filters);
+      const feedbacks = await Feedback.findByTechnician(
+        req.params.technicianId,
+        filters
+      );
 
       res.json({
         success: true,
-        data: { feedbacks }
+        data: { feedbacks },
       });
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error al obtener feedback',
-        error: error.message
+        message: "Error al obtener feedback",
+        error: error.message,
       });
     }
   }
@@ -111,26 +114,27 @@ class FeedbackController {
       const filters = {
         technician_id: req.query.technician_id,
         date_from: req.query.date_from,
-        date_to: req.query.date_to
+        date_to: req.query.date_to,
       };
 
-      Object.keys(filters).forEach(key => filters[key] === undefined && delete filters[key]);
+      Object.keys(filters).forEach(
+        (key) => filters[key] === undefined && delete filters[key]
+      );
 
       const statistics = await Feedback.getStatistics(filters);
 
       res.json({
         success: true,
-        data: { statistics }
+        data: { statistics },
       });
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error al obtener estadísticas',
-        error: error.message
+        message: "Error al obtener estadísticas",
+        error: error.message,
       });
     }
   }
 }
 
 module.exports = new FeedbackController();
-
