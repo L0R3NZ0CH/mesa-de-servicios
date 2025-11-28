@@ -32,18 +32,41 @@ const TechnicianDashboardScreen = () => {
 
   const loadTechnicianData = async () => {
     try {
+      // Primero obtener el registro de técnico para tener el technician_id
+      const techniciansResponse = await technicianService.getAll();
+      if (!techniciansResponse.success) {
+        console.error("Error obteniendo lista de técnicos");
+        return;
+      }
+
+      // Buscar el técnico actual por user_id
+      const currentTechnician = techniciansResponse.data.technicians.find(
+        (tech) => tech.user_id === user?.id
+      );
+
+      if (!currentTechnician) {
+        console.error(
+          "No se encontró información de técnico para este usuario"
+        );
+        return;
+      }
+
+      const technicianId = currentTechnician.id;
+
       // Cargar carga de trabajo
-      const workloadResponse = await technicianService.getWorkload(user?.id);
+      const workloadResponse = await technicianService.getWorkload(
+        technicianId
+      );
       if (workloadResponse.success) {
-        setWorkload(workloadResponse.data);
+        setWorkload(workloadResponse.data.workload);
       }
 
       // Cargar desempeño
       const performanceResponse = await technicianService.getPerformance(
-        user?.id
+        technicianId
       );
       if (performanceResponse.success) {
-        setPerformance(performanceResponse.data);
+        setPerformance(performanceResponse.data.performance);
       }
     } catch (error) {
       console.error("Error loading technician data:", error);
@@ -172,7 +195,11 @@ const TechnicianDashboardScreen = () => {
           <View style={styles.performanceCard}>
             <Text style={styles.performanceLabel}>Calificación Promedio:</Text>
             <Text style={[styles.performanceValue, { color: "#FF9800" }]}>
-              ⭐ {performance.avg_rating.toFixed(1)} / 5.0
+              ⭐{" "}
+              {typeof performance.avg_rating === "number"
+                ? performance.avg_rating.toFixed(1)
+                : performance.avg_rating}{" "}
+              / 5.0
             </Text>
           </View>
         )}

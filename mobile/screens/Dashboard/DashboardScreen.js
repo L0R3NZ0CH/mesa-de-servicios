@@ -40,14 +40,17 @@ const DashboardScreen = () => {
         const response = await ticketService.getAll({ created_by: user?.id });
         if (response.success) {
           const tickets = response.data.tickets || [];
-          setStatistics({
+          const stats = {
             total: tickets.length,
             open: tickets.filter((t) => t.status === "open").length,
             in_progress: tickets.filter((t) => t.status === "in_progress")
               .length,
+            pending: tickets.filter((t) => t.status === "pending").length,
             resolved: tickets.filter((t) => t.status === "resolved").length,
             closed: tickets.filter((t) => t.status === "closed").length,
-          });
+          };
+          console.log("Estadísticas de usuario:", stats);
+          setStatistics(stats);
         }
       }
     } catch (error) {
@@ -145,6 +148,31 @@ const DashboardScreen = () => {
               router.push({
                 pathname: "/(tabs)/tickets",
                 params: { filter: "resolved" },
+              })
+            }
+          />
+        </View>
+
+        <View style={styles.statsRow}>
+          <StatCard
+            title="Cerrados"
+            value={statistics?.closed}
+            color="#757575"
+            onPress={() =>
+              router.push({
+                pathname: "/(tabs)/tickets",
+                params: { filter: "closed" },
+              })
+            }
+          />
+          <StatCard
+            title="Pendientes"
+            value={statistics?.pending}
+            color="#9C27B0"
+            onPress={() =>
+              router.push({
+                pathname: "/(tabs)/tickets",
+                params: { filter: "pending" },
               })
             }
           />

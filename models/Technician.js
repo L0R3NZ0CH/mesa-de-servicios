@@ -101,31 +101,77 @@ class Technician {
   }
 
   static async getWorkload(technicianId) {
+    // Obtener información del técnico
+    const techInfo = await this.findById(technicianId);
+    if (!techInfo) return {};
+
     const sql = `SELECT 
-                 COUNT(*) as total_tickets,
-                 SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) as open_tickets,
-                 SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tickets,
-                 AVG(TIMESTAMPDIFF(HOUR, created_at, resolution_time)) as avg_resolution_time
+                 COUNT(CASE WHEN status IN ('open', 'in_progress', 'pending') THEN 1 END) as assigned_tickets,
+                 COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress_tickets,
+                 COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_tickets,
+                 COUNT(CASE WHEN status IN ('resolved', 'closed') AND DATE(resolution_time) = CURDATE() THEN 1 END) as resolved_today
                  FROM tickets 
-                 WHERE assigned_to = (SELECT user_id FROM technicians WHERE id = ?)
-                 AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)`;
-    const results = await query(sql, [technicianId]);
-    return results[0] || {};
+                 WHERE assigned_to = ?`;
+    const results = await query(sql, [techInfo.user_id]);
+    const workloadData = results[0] || {};
+
+    return {
+      assigned_tickets: workloadData.assigned_tickets || 0,
+      in_progress_tickets: workloadData.in_progress_tickets || 0,
+      pending_tickets: workloadData.pending_tickets || 0,
+      resolved_today: workloadData.resolved_today || 0,
+      max_tickets: techInfo.max_tickets || 10,
+      is_available: techInfo.is_available || false,
+    };
   }
 
   static async getPerformance(technicianId, dateFrom, dateTo) {
+    // Obtener información del técnico
+    const techInfo = await this.findById(technicianId);
+    if (!techInfo) return {};
+
     const sql = `SELECT 
                  COUNT(*) as total_resolved,
-                 AVG(TIMESTAMPDIFF(HOUR, created_at, response_time)) as avg_response_time,
-                 AVG(TIMESTAMPDIFF(HOUR, created_at, resolution_time)) as avg_resolution_time,
-                 SUM(CASE WHEN sla_breached = 1 THEN 1 ELSE 0 END) as sla_breached_count,
-                 AVG((SELECT AVG(rating) FROM feedback WHERE technician_id = t.assigned_to)) as avg_rating
+                 ROUND(AVG(TIMESTAMPDIFF(MINUTE, t.created_at, t.response_time)) / 60, 1) as avg_response_hours,
+                 ROUND(AVG(TIMESTAMPDIFF(MINUTE, t.created_at, t.resolution_time)) / 60, 1) as avg_resolution_hours,
+                 SUM(CASE WHEN t.sla_breached = 0 THEN 1 ELSE 0 END) as within_sla,
+                 COUNT(*) as total_tickets
                  FROM tickets t
-                 WHERE t.assigned_to = (SELECT user_id FROM technicians WHERE id = ?)
+                 WHERE t.assigned_to = ?
                  AND t.status IN ('resolved', 'closed')
                  AND DATE(t.created_at) BETWEEN ? AND ?`;
-    const results = await query(sql, [technicianId, dateFrom, dateTo]);
-    return results[0] || {};
+    const results = await query(sql, [techInfo.user_id, dateFrom, dateTo]);
+    const perfData = results[0] || {};
+
+    // Obtener rating promedio
+    const ratingSQL = `SELECT ROUND(AVG(rating), 1) as avg_rating 
+                       FROM feedback 
+                       WHERE technician_id = ?
+                       AND DATE(created_at) BETWEEN ? AND ?`;
+    const ratingResults = await query(ratingSQL, [
+      techInfo.user_id,
+      dateFrom,
+      dateTo,
+    ]);
+    const avgRating = ratingResults[0]?.avg_rating || null;
+
+    const totalResolved = perfData.total_resolved || 0;
+    const withinSLA = perfData.within_sla || 0;
+    const slaRate =
+      totalResolved > 0 ? Math.round((withinSLA / totalResolved) * 100) : 0;
+
+    return {
+      total_resolved: totalResolved,
+      avg_response_time: perfData.avg_response_hours
+        ? `${perfData.avg_response_hours} hrs`
+        : "N/A",
+      avg_resolution_time: perfData.avg_resolution_hours
+        ? `${perfData.avg_resolution_hours} hrs`
+        : "N/A",
+      within_sla: withinSLA,
+      sla_compliance_rate: slaRate,
+      avg_rating: avgRating,
+    };
   }
 }
 
