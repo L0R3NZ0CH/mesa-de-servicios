@@ -337,9 +337,7 @@ const AdvancedTicketSearchScreen = () => {
                 {filters.sla_breached ? "SLA Incumplido" : "SLA OK"}
               </Text>
               <TouchableOpacity
-                onPress={() =>
-                  setFilters({ ...filters, sla_breached: null })
-                }
+                onPress={() => setFilters({ ...filters, sla_breached: null })}
               >
                 <Text style={styles.activeFilterRemove}>✕</Text>
               </TouchableOpacity>
@@ -385,7 +383,9 @@ const AdvancedTicketSearchScreen = () => {
             >
               <View style={styles.ticketHeader}>
                 <View style={styles.ticketHeaderLeft}>
-                  <Text style={styles.ticketNumber}>{ticket.ticket_number}</Text>
+                  <Text style={styles.ticketNumber}>
+                    {ticket.ticket_number}
+                  </Text>
                   <View
                     style={[
                       styles.statusBadge,
@@ -409,7 +409,9 @@ const AdvancedTicketSearchScreen = () => {
                 >
                   <Text style={styles.priorityText}>
                     {ticket.priority_name ||
-                      getPriorityText(ticket.priority_level || ticket.priority_id)}
+                      getPriorityText(
+                        ticket.priority_level || ticket.priority_id
+                      )}
                   </Text>
                 </View>
               </View>
@@ -443,9 +445,13 @@ const AdvancedTicketSearchScreen = () => {
                 {ticket.resolution_time && (
                   <Text style={styles.footerText}>
                     Resuelto:{" "}
-                    {format(new Date(ticket.resolution_time), "dd/MM/yyyy HH:mm", {
-                      locale: es,
-                    })}
+                    {format(
+                      new Date(ticket.resolution_time),
+                      "dd/MM/yyyy HH:mm",
+                      {
+                        locale: es,
+                      }
+                    )}
                   </Text>
                 )}
               </View>
@@ -548,7 +554,8 @@ const AdvancedTicketSearchScreen = () => {
                       key={priority}
                       style={[
                         styles.filterChip,
-                        filters.priority === priority && styles.filterChipActive,
+                        filters.priority === priority &&
+                          styles.filterChipActive,
                       ]}
                       onPress={() => setFilters({ ...filters, priority })}
                     >
@@ -786,7 +793,10 @@ const AdvancedTicketSearchScreen = () => {
               >
                 <Text style={styles.clearButtonText}>Limpiar</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.applyButton} onPress={applyFilters}>
+              <TouchableOpacity
+                style={styles.applyButton}
+                onPress={applyFilters}
+              >
                 <Text style={styles.applyButtonText}>Aplicar Filtros</Text>
               </TouchableOpacity>
             </View>

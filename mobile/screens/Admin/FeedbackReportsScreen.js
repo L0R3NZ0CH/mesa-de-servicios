@@ -170,12 +170,16 @@ const FeedbackReportsScreen = () => {
             <Text
               style={[
                 styles.averageRating,
-                { color: getRatingColor(feedbackData.averageRating) },
+                {
+                  color: getRatingColor(
+                    Number(feedbackData.averageRating) || 0
+                  ),
+                },
               ]}
             >
-              {feedbackData.averageRating.toFixed(1)}
+              {(Number(feedbackData.averageRating) || 0).toFixed(1)}
             </Text>
-            {renderStars(Math.round(feedbackData.averageRating))}
+            {renderStars(Math.round(Number(feedbackData.averageRating) || 0))}
           </View>
 
           <Text style={styles.totalFeedbacks}>

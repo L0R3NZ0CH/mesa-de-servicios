@@ -16,7 +16,7 @@ const MyFeedbackScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [feedbacks, setFeedbacks] = useState([]);
   const [stats, setStats] = useState({
-    average_rating: 0,
+    average_rating: "0.0",
     total_feedbacks: 0,
     rating_distribution: {
       5: 0,

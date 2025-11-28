@@ -52,11 +52,14 @@ const TicketListScreen = () => {
       let queryFilters = {};
 
       // Aplicar filtros avanzados
-      if (filters.priority_level) queryFilters.priority_level = filters.priority_level;
+      if (filters.priority_level)
+        queryFilters.priority_level = filters.priority_level;
       if (filters.assigned_to) queryFilters.assigned_to = filters.assigned_to;
       if (filters.category_id) queryFilters.category_id = filters.category_id;
-      if (filters.incident_type_id) queryFilters.incident_type_id = filters.incident_type_id;
-      if (filters.sla_breached !== null) queryFilters.sla_breached = filters.sla_breached;
+      if (filters.incident_type_id)
+        queryFilters.incident_type_id = filters.incident_type_id;
+      if (filters.sla_breached !== null)
+        queryFilters.sla_breached = filters.sla_breached;
 
       // Admin puede ver todos los tickets
       if (can.viewAllTickets) {
@@ -343,9 +346,7 @@ const TicketListScreen = () => {
                 {getPriorityText(filters.priority_level)}
               </Text>
               <TouchableOpacity
-                onPress={() =>
-                  setFilters({ ...filters, priority_level: null })
-                }
+                onPress={() => setFilters({ ...filters, priority_level: null })}
               >
                 <Text style={styles.activeFilterRemove}>✕</Text>
               </TouchableOpacity>
@@ -536,15 +537,11 @@ const TicketListScreen = () => {
               {(isAdmin || isTechnician) && (
                 <View style={styles.filterSection}>
                   <Text style={styles.filterLabel}>Técnico:</Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                  >
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     <TouchableOpacity
                       style={[
                         styles.filterChip,
-                        filters.assigned_to === null &&
-                          styles.filterChipActive,
+                        filters.assigned_to === null && styles.filterChipActive,
                       ]}
                       onPress={() =>
                         setFilters({ ...filters, assigned_to: null })
@@ -693,8 +690,7 @@ const TicketListScreen = () => {
                   <TouchableOpacity
                     style={[
                       styles.filterChip,
-                      filters.sla_breached === null &&
-                        styles.filterChipActive,
+                      filters.sla_breached === null && styles.filterChipActive,
                     ]}
                     onPress={() =>
                       setFilters({ ...filters, sla_breached: null })
@@ -713,8 +709,7 @@ const TicketListScreen = () => {
                   <TouchableOpacity
                     style={[
                       styles.filterChip,
-                      filters.sla_breached === false &&
-                        styles.filterChipActive,
+                      filters.sla_breached === false && styles.filterChipActive,
                     ]}
                     onPress={() =>
                       setFilters({ ...filters, sla_breached: false })
@@ -733,8 +728,7 @@ const TicketListScreen = () => {
                   <TouchableOpacity
                     style={[
                       styles.filterChip,
-                      filters.sla_breached === true &&
-                        styles.filterChipActive,
+                      filters.sla_breached === true && styles.filterChipActive,
                     ]}
                     onPress={() =>
                       setFilters({ ...filters, sla_breached: true })
