@@ -1,4 +1,4 @@
-const { query } = require('../config/database');
+const { query } = require("../config/database");
 
 class SLA {
   static async getConfig(priorityId) {
@@ -19,13 +19,24 @@ class SLA {
   }
 
   static async update(priorityId, slaData) {
-    const { response_time_hours, resolution_time_hours, escalation_enabled, escalation_time_hours } = slaData;
-    
+    const {
+      response_time_hours,
+      resolution_time_hours,
+      escalation_enabled,
+      escalation_time_hours,
+    } = slaData;
+
     const sql = `UPDATE sla_config 
                  SET response_time_hours = ?, resolution_time_hours = ?, 
                      escalation_enabled = ?, escalation_time_hours = ?
                  WHERE priority_id = ?`;
-    await query(sql, [response_time_hours, resolution_time_hours, escalation_enabled, escalation_time_hours, priorityId]);
+    await query(sql, [
+      response_time_hours,
+      resolution_time_hours,
+      escalation_enabled,
+      escalation_time_hours,
+      priorityId,
+    ]);
     return await this.getConfig(priorityId);
   }
 
@@ -46,7 +57,7 @@ class SLA {
   }
 
   static async markAsBreached(ticketId) {
-    const sql = 'UPDATE tickets SET sla_breached = 1 WHERE id = ?';
+    const sql = "UPDATE tickets SET sla_breached = 1 WHERE id = ?";
     await query(sql, [ticketId]);
     return true;
   }
@@ -66,18 +77,18 @@ class SLA {
     const params = [];
 
     if (filters.date_from) {
-      sql += ' AND DATE(created_at) >= ?';
+      sql += " AND DATE(created_at) >= ?";
       params.push(filters.date_from);
     }
 
     if (filters.date_to) {
-      sql += ' AND DATE(created_at) <= ?';
+      sql += " AND DATE(created_at) <= ?";
       params.push(filters.date_to);
     }
 
     const results = await query(sql, params);
     const data = results[0] || {};
-    
+
     // Formatear tiempos promedio
     return {
       total_tickets: data.total_tickets || 0,
@@ -85,11 +96,14 @@ class SLA {
       breached_sla: data.breached_sla || 0,
       within_sla_percentage: data.within_sla_percentage || 0,
       breached_sla_percentage: data.breached_sla_percentage || 0,
-      avg_response_time: data.avg_response_hours ? `${data.avg_response_hours} hrs` : 'N/A',
-      avg_resolution_time: data.avg_resolution_hours ? `${data.avg_resolution_hours} hrs` : 'N/A'
+      avg_response_time: data.avg_response_hours
+        ? `${data.avg_response_hours} hrs`
+        : "N/A",
+      avg_resolution_time: data.avg_resolution_hours
+        ? `${data.avg_resolution_hours} hrs`
+        : "N/A",
     };
   }
 }
 
 module.exports = SLA;
-

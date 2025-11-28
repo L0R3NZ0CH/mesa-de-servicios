@@ -238,6 +238,11 @@ export const technicianService = {
     );
     return response.data;
   },
+
+  delete: async (id) => {
+    const response = await api.delete(`/technicians/${id}`);
+    return response.data;
+  },
 };
 
 // Servicios de Base de Conocimientos

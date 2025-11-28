@@ -320,14 +320,22 @@ const UserDetailScreen = () => {
       </View>
 
       {/* Actions */}
-      {can.deleteUser && (
+      {(can.updateUser || can.deleteUser) && (
         <View style={styles.actionsCard}>
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={handleDeleteUser}
-          >
-            <Text style={styles.deleteButtonText}>🗑️ Eliminar Usuario</Text>
-          </TouchableOpacity>
+          {can.updateUser && (
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() =>
+                router.push({
+                  pathname: "/edit-user",
+                  params: { userId: user.id },
+                })
+              }
+            >
+              <Text style={styles.editButtonText}>✏️ Editar Usuario</Text>
+            </TouchableOpacity>
+          )}
+
         </View>
       )}
 
@@ -504,6 +512,18 @@ const styles = StyleSheet.create({
     marginTop: 0,
     marginBottom: 0,
     marginTop: 15,
+  },
+  editButton: {
+    backgroundColor: "#FF9800",
+    padding: 15,
+    borderRadius: 8,
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  editButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
   deleteButton: {
     backgroundColor: "#F44336",

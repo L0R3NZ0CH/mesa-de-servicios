@@ -142,15 +142,6 @@ const UsersScreen = () => {
         >
           {item.is_active ? "✓ Activo" : "✗ Inactivo"}
         </Text>
-
-        {can.deleteUser && (
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={() => handleDeleteUser(item.id)}
-          >
-            <Text style={styles.deleteButtonText}>🗑️ Eliminar</Text>
-          </TouchableOpacity>
-        )}
       </View>
     </TouchableOpacity>
   );

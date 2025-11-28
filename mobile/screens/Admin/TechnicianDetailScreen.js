@@ -80,6 +80,47 @@ const TechnicianDetailScreen = () => {
     );
   };
 
+  const handleDeleteTechnician = () => {
+    if (!can.updateTechnician) {
+      Alert.alert("Error", "No tienes permisos para eliminar técnicos");
+      return;
+    }
+
+    if (
+      window.confirm(
+        `¿Estás seguro de eliminar a ${technician.first_name} ${technician.last_name}? Esta acción no se puede deshacer.`
+      )
+    ) {
+      deleteTechnician();
+    }
+  };
+
+  const deleteTechnician = async () => {
+    try {
+      setLoading(true);
+      const response = await technicianService.delete(technicianId);
+
+      if (response.success) {
+        window.alert("Técnico eliminado exitosamente");
+        router.back();
+      } else {
+        Alert.alert(
+          "Error",
+          response.message || "No se pudo eliminar el técnico"
+        );
+      }
+    } catch (error) {
+      console.error("Error deleting technician:", error);
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "No se pudo eliminar el técnico";
+      Alert.alert("Error", errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -174,15 +215,6 @@ const TechnicianDetailScreen = () => {
         <Text style={styles.scheduleText}>
           {technician.schedule || "No especificado"}
         </Text>
-
-        {can.updateTechnician && (
-          <TouchableOpacity
-            style={styles.updateButton}
-            onPress={handleUpdateSchedule}
-          >
-            <Text style={styles.updateButtonText}>Actualizar Horario</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* Contact Info */}
@@ -222,6 +254,23 @@ const TechnicianDetailScreen = () => {
           <Text style={styles.ratingCount}>
             Basado en {technician.total_ratings || 0} evaluaciones
           </Text>
+        </View>
+      )}
+
+      {/* Actions */}
+      {can.updateTechnician && (
+        <View style={styles.actionsCard}>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() =>
+              router.push({
+                pathname: "/edit-technician",
+                params: { technicianId: technician.id },
+              })
+            }
+          >
+            <Text style={styles.editButtonText}>✏️ Editar Técnico</Text>
+          </TouchableOpacity>
         </View>
       )}
     </ScrollView>
@@ -391,6 +440,35 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     color: "#F44336",
+  },
+  actionsCard: {
+    margin: 15,
+    marginTop: 0,
+    marginBottom: 0,
+    marginTop: 15,
+  },
+  editButton: {
+    backgroundColor: "#FF9800",
+    padding: 15,
+    borderRadius: 8,
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  editButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  deleteButton: {
+    backgroundColor: "#F44336",
+    padding: 15,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  deleteButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
 

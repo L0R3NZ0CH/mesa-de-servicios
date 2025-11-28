@@ -221,6 +221,45 @@ class TechnicianController {
       });
     }
   }
+
+  async delete(req, res) {
+    try {
+      const technician = await Technician.findById(req.params.id);
+      if (!technician) {
+        return res.status(404).json({
+          success: false,
+          message: "Técnico no encontrado",
+        });
+      }
+
+      // Verificar si tiene tickets asignados activos
+      const activeTickets = await Ticket.findAll({
+        assigned_to: technician.user_id,
+        status: ["open", "in_progress", "pending"],
+      });
+
+      if (activeTickets && activeTickets.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `No se puede eliminar el técnico porque tiene ${activeTickets.length} ticket(s) activo(s) asignado(s)`,
+        });
+      }
+
+      // Eliminar usuario (esto eliminará en cascada el registro de técnico por FK)
+      await User.delete(technician.user_id);
+
+      res.json({
+        success: true,
+        message: "Técnico eliminado exitosamente",
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Error al eliminar técnico",
+        error: error.message,
+      });
+    }
+  }
 }
 
 module.exports = new TechnicianController();
