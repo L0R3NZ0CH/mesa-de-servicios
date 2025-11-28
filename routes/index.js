@@ -12,6 +12,7 @@ const notificationRoutes = require("./notifications");
 const categoryRoutes = require("./categories");
 const userRoutes = require("./users");
 const departmentRoutes = require("./departments");
+const incidentTypeRoutes = require("./incidentTypes");
 
 // Rutas de la API
 router.use("/auth", authRoutes);
@@ -25,6 +26,7 @@ router.use("/notifications", notificationRoutes);
 router.use("/categories", categoryRoutes);
 router.use("/users", userRoutes);
 router.use("/departments", departmentRoutes);
+router.use("/incident-types", incidentTypeRoutes);
 
 // Ruta de salud
 router.get("/health", (req, res) => {

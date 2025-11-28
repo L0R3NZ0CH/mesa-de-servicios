@@ -547,4 +547,32 @@ export const userService = {
   },
 };
 
+// Servicios de Tipos de Incidente
+export const incidentTypeService = {
+  getAll: async () => {
+    const response = await api.get("/incident-types");
+    return response.data;
+  },
+
+  getById: async (id) => {
+    const response = await api.get(`/incident-types/${id}`);
+    return response.data;
+  },
+
+  create: async (data) => {
+    const response = await api.post("/incident-types", data);
+    return response.data;
+  },
+
+  update: async (id, data) => {
+    const response = await api.put(`/incident-types/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id) => {
+    const response = await api.delete(`/incident-types/${id}`);
+    return response.data;
+  },
+};
+
 export default api;
