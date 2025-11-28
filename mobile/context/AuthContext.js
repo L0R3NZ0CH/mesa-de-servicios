@@ -7,6 +7,8 @@ const AuthContext = createContext({});
 
 const TOKEN_KEY = "@auth_token";
 const USER_KEY = "@auth_user";
+const CREDENTIALS_KEY = "saved_credentials";
+const REMEMBER_ME_KEY = "@remember_me";
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -20,8 +22,9 @@ export const AuthProvider = ({ children }) => {
     loadStoredAuth();
 
     // Registrar callback para logout automático en caso de 401
+    // IMPORTANTE: No debe limpiar las credenciales guardadas
     setLogoutCallback(() => {
-      clearStoredAuth();
+      logout();
     });
   }, []);
 
@@ -81,7 +84,48 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (email, password) => {
+  const saveCredentials = async (email, password) => {
+    try {
+      const credentials = JSON.stringify({ email, password });
+      await AsyncStorage.setItem(CREDENTIALS_KEY, credentials);
+      await AsyncStorage.setItem(REMEMBER_ME_KEY, "true");
+      console.log("Credenciales guardadas:", email);
+      return true;
+    } catch (error) {
+      console.error("Error saving credentials:", error);
+      return false;
+    }
+  };
+
+  const getSavedCredentials = async () => {
+    try {
+      const rememberMe = await AsyncStorage.getItem(REMEMBER_ME_KEY);
+      console.log("RememberMe flag:", rememberMe);
+      if (rememberMe === "true") {
+        const credentialsStr = await AsyncStorage.getItem(CREDENTIALS_KEY);
+        console.log("Credenciales recuperadas:", credentialsStr ? "Sí" : "No");
+        if (credentialsStr) {
+          return JSON.parse(credentialsStr);
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error("Error getting saved credentials:", error);
+      return null;
+    }
+  };
+
+  const clearSavedCredentials = async () => {
+    try {
+      await AsyncStorage.removeItem(CREDENTIALS_KEY);
+      await AsyncStorage.removeItem(REMEMBER_ME_KEY);
+      console.log("Credenciales eliminadas");
+    } catch (error) {
+      console.error("Error clearing saved credentials:", error);
+    }
+  };
+
+  const login = async (email, password, rememberMe = false) => {
     try {
       const response = await authService.login(email, password);
 
@@ -100,6 +144,13 @@ export const AuthProvider = ({ children }) => {
           await AsyncStorage.setItem(USER_KEY, JSON.stringify(userData));
         } catch (storageError) {
           console.error("Error saving to storage:", storageError);
+        }
+
+        // Guardar o limpiar credenciales según rememberMe
+        if (rememberMe) {
+          await saveCredentials(email, password);
+        } else {
+          await clearSavedCredentials();
         }
 
         return { success: true, data: response.data };
@@ -192,6 +243,8 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateUser,
     refreshUser,
+    getSavedCredentials,
+    clearSavedCredentials,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
