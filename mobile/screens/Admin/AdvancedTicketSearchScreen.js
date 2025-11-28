@@ -1,18 +1,16 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  RefreshControl,
-  ActivityIndicator,
-  Alert,
-  TextInput,
-  Modal,
   ScrollView,
+  StyleSheet,
+  ActivityIndicator,
+  TouchableOpacity,
+  TextInput,
+  RefreshControl,
+  Modal,
 } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter } from "expo-router";
 import { useAuth } from "../../context/AuthContext";
 import { usePermissions } from "../../hooks/usePermissions";
 import {
@@ -24,79 +22,92 @@ import {
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
-const TicketListScreen = () => {
+const AdvancedTicketSearchScreen = () => {
   const router = useRouter();
-  const params = useLocalSearchParams();
   const { user } = useAuth();
-  const { can, isAdmin, isTechnician, isUser } = usePermissions();
-  const [tickets, setTickets] = useState([]);
+  const { can, isAdmin } = usePermissions();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [showClosed, setShowClosed] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
+  const [tickets, setTickets] = useState([]);
   const [technicians, setTechnicians] = useState([]);
   const [categories, setCategories] = useState([]);
   const [incidentTypes, setIncidentTypes] = useState([]);
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Estados de búsqueda y filtros
+  const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
-    status: params?.filter || null,
-    priority_level: null,
-    assigned_to: null,
+    status: null, // open, in_progress, pending, resolved, closed
+    priority: null, // 1, 2, 3, 4
+    assigned_to: null, // ID del técnico
     category_id: null,
     incident_type_id: null,
-    sla_breached: null,
+    date_from: null,
+    date_to: null,
+    sla_breached: null, // true/false
   });
 
-  const loadTickets = useCallback(async () => {
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  const loadInitialData = async () => {
     try {
-      let queryFilters = {};
+      setLoading(true);
+      await Promise.all([
+        loadTickets(),
+        loadTechnicians(),
+        loadCategories(),
+        loadIncidentTypes(),
+      ]);
+    } catch (error) {
+      console.error("Error loading initial data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      // Aplicar filtros avanzados
-      if (filters.priority_level) queryFilters.priority_level = filters.priority_level;
-      if (filters.assigned_to) queryFilters.assigned_to = filters.assigned_to;
-      if (filters.category_id) queryFilters.category_id = filters.category_id;
-      if (filters.incident_type_id) queryFilters.incident_type_id = filters.incident_type_id;
-      if (filters.sla_breached !== null) queryFilters.sla_breached = filters.sla_breached;
+  const loadTickets = async () => {
+    try {
+      const apiFilters = {};
 
-      // Admin puede ver todos los tickets
-      if (can.viewAllTickets) {
-        // No se necesita filtro adicional
-      }
-      // Técnicos ven tickets asignados a ellos
-      else if (can.viewAssignedTickets && filters.status === "assigned") {
-        queryFilters.assigned_to = user?.id;
-      }
-      // Usuarios normales solo ven sus propios tickets
-      else if (can.viewOwnTickets && !can.viewAllTickets) {
-        queryFilters.created_by = user?.id;
-      }
+      // Construir filtros para la API
+      if (filters.status) apiFilters.status = filters.status;
+      if (filters.priority) apiFilters.priority_level = filters.priority;
+      if (filters.assigned_to) apiFilters.assigned_to = filters.assigned_to;
+      if (filters.category_id) apiFilters.category_id = filters.category_id;
+      if (filters.incident_type_id)
+        apiFilters.incident_type_id = filters.incident_type_id;
+      if (filters.sla_breached !== null)
+        apiFilters.sla_breached = filters.sla_breached;
 
-      const response = await ticketService.getAll(queryFilters);
+      const response = await ticketService.getAll(apiFilters);
       if (response.success) {
-        let filteredTickets = response.data.tickets || [];
+        let ticketList = response.data.tickets || [];
 
-        // Filtrar según la vista (activos o cerrados)
-        if (showClosed) {
-          // Mostrar solo cerrados y resueltos
-          filteredTickets = filteredTickets.filter(
-            (t) => t.status === "closed" || t.status === "resolved"
+        // Filtros de fecha (frontend)
+        if (filters.date_from) {
+          const fromDate = new Date(filters.date_from);
+          ticketList = ticketList.filter(
+            (t) => new Date(t.created_at) >= fromDate
           );
-        } else {
-          // Mostrar solo activos (open, in_progress, pending)
-          filteredTickets = filteredTickets.filter(
-            (t) => t.status !== "closed" && t.status !== "resolved"
+        }
+        if (filters.date_to) {
+          const toDate = new Date(filters.date_to);
+          toDate.setHours(23, 59, 59, 999);
+          ticketList = ticketList.filter(
+            (t) => new Date(t.created_at) <= toDate
           );
         }
 
-        setTickets(filteredTickets);
+        setTickets(ticketList);
       }
     } catch (error) {
-      Alert.alert("Error", "No se pudieron cargar los tickets");
+      console.error("Error loading tickets:", error);
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
-  }, [filters, can, user, showClosed]);
+  };
 
   const loadTechnicians = async () => {
     try {
@@ -131,13 +142,6 @@ const TicketListScreen = () => {
     }
   };
 
-  useEffect(() => {
-    loadTickets();
-    loadTechnicians();
-    loadCategories();
-    loadIncidentTypes();
-  }, [loadTickets]);
-
   const onRefresh = () => {
     setRefreshing(true);
     loadTickets();
@@ -151,17 +155,16 @@ const TicketListScreen = () => {
   const clearFilters = () => {
     setFilters({
       status: null,
-      priority_level: null,
+      priority: null,
       assigned_to: null,
       category_id: null,
       incident_type_id: null,
+      date_from: null,
+      date_to: null,
       sla_breached: null,
     });
     setSearchQuery("");
-  };
-
-  const getActiveFiltersCount = () => {
-    return Object.values(filters).filter((v) => v !== null).length;
+    loadTickets();
   };
 
   const filterTicketsBySearch = () => {
@@ -175,7 +178,7 @@ const TicketListScreen = () => {
         ticket.description?.toLowerCase().includes(query) ||
         ticket.category_name?.toLowerCase().includes(query) ||
         ticket.incident_type_name?.toLowerCase().includes(query) ||
-        ticket.assigned_to_name?.toLowerCase().includes(query)
+        ticket.assigned_technician?.toLowerCase().includes(query)
     );
   };
 
@@ -190,11 +193,25 @@ const TicketListScreen = () => {
     return colors[status] || "#666";
   };
 
-  const getPriorityColor = (priorityLevel) => {
-    if (priorityLevel === 4) return "#F44336"; // Crítica
-    if (priorityLevel === 3) return "#FF9800"; // Alta
-    if (priorityLevel === 2) return "#2196F3"; // Media
-    return "#4CAF50"; // Baja
+  const getStatusText = (status) => {
+    const texts = {
+      open: "Abierto",
+      in_progress: "En Proceso",
+      pending: "Pendiente",
+      resolved: "Resuelto",
+      closed: "Cerrado",
+    };
+    return texts[status] || status;
+  };
+
+  const getPriorityColor = (level) => {
+    const colors = {
+      1: "#388E3C",
+      2: "#FBC02D",
+      3: "#F57C00",
+      4: "#D32F2F",
+    };
+    return colors[level] || "#666";
   };
 
   const getPriorityText = (level) => {
@@ -218,103 +235,27 @@ const TicketListScreen = () => {
     return icons[type?.toLowerCase()] || "📋";
   };
 
+  const getActiveFiltersCount = () => {
+    return Object.values(filters).filter((v) => v !== null).length;
+  };
+
   const filteredTickets = filterTicketsBySearch();
-
-  const renderTicket = ({ item }) => (
-    <TouchableOpacity
-      style={styles.ticketCard}
-      onPress={() =>
-        router.push({
-          pathname: "/ticket-detail",
-          params: { ticketId: item.id },
-        })
-      }
-    >
-      <View style={styles.ticketHeader}>
-        <Text style={styles.ticketNumber}>{item.ticket_number}</Text>
-        <View
-          style={[
-            styles.statusBadge,
-            { backgroundColor: getStatusColor(item.status) },
-          ]}
-        >
-          <Text style={styles.statusText}>
-            {item.status === "open"
-              ? "Abierto"
-              : item.status === "in_progress"
-              ? "En Proceso"
-              : item.status === "pending"
-              ? "Pendiente"
-              : item.status === "resolved"
-              ? "Resuelto"
-              : "Cerrado"}
-          </Text>
-        </View>
-      </View>
-
-      <Text style={styles.ticketTitle}>{item.title}</Text>
-      <Text style={styles.ticketDescription} numberOfLines={2}>
-        {item.description}
-      </Text>
-
-      <View style={styles.ticketFooter}>
-        <View style={styles.ticketInfo}>
-          <View
-            style={[
-              styles.priorityBadge,
-              { backgroundColor: getPriorityColor(item.priority_level) },
-            ]}
-          >
-            <Text style={styles.priorityText}>{item.priority_name}</Text>
-          </View>
-          <Text style={styles.categoryText}>{item.category_name}</Text>
-        </View>
-        <Text style={styles.dateText}>
-          {format(new Date(item.created_at), "dd MMM yyyy", { locale: es })}
-        </Text>
-      </View>
-
-      {item.assigned_to_name && (
-        <Text style={styles.assignedText}>
-          Asignado a: {item.assigned_to_name} {item.assigned_to_lastname}
-        </Text>
-      )}
-    </TouchableOpacity>
-  );
-
-  if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#2196F3" />
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          {isAdmin
-            ? "Todos los Tickets"
-            : isTechnician && filters.status === null
-            ? "Tickets Asignados"
-            : "Mis Tickets"}
+        <Text style={styles.headerTitle}>🔍 Búsqueda Avanzada</Text>
+        <Text style={styles.headerSubtitle}>
+          {filteredTickets.length} ticket(s) encontrado(s)
         </Text>
-        {can.createTicket && (
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => router.push("/create-ticket")}
-          >
-            <Text style={styles.addButtonText}>+ Nuevo</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
-      {/* Buscador y Filtros */}
+      {/* Buscador */}
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
-          placeholder="🔍 Buscar tickets..."
+          placeholder="🔍 Buscar por número, título, descripción, técnico..."
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -325,7 +266,7 @@ const TicketListScreen = () => {
           <Text style={styles.filterButtonText}>
             {getActiveFiltersCount() > 0
               ? `Filtros (${getActiveFiltersCount()})`
-              : "⚙️"}
+              : "Filtros"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -337,15 +278,25 @@ const TicketListScreen = () => {
           showsHorizontalScrollIndicator={false}
           style={styles.activeFilters}
         >
-          {filters.priority_level && (
+          {filters.status && (
             <View style={styles.activeFilterChip}>
               <Text style={styles.activeFilterText}>
-                {getPriorityText(filters.priority_level)}
+                Estado: {getStatusText(filters.status)}
               </Text>
               <TouchableOpacity
-                onPress={() =>
-                  setFilters({ ...filters, priority_level: null })
-                }
+                onPress={() => setFilters({ ...filters, status: null })}
+              >
+                <Text style={styles.activeFilterRemove}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          {filters.priority && (
+            <View style={styles.activeFilterChip}>
+              <Text style={styles.activeFilterText}>
+                Prioridad: {getPriorityText(filters.priority)}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setFilters({ ...filters, priority: null })}
               >
                 <Text style={styles.activeFilterRemove}>✕</Text>
               </TouchableOpacity>
@@ -370,6 +321,7 @@ const TicketListScreen = () => {
           {filters.category_id && (
             <View style={styles.activeFilterChip}>
               <Text style={styles.activeFilterText}>
+                Categoría:{" "}
                 {categories.find((c) => c.id === filters.category_id)?.name}
               </Text>
               <TouchableOpacity
@@ -379,30 +331,15 @@ const TicketListScreen = () => {
               </TouchableOpacity>
             </View>
           )}
-          {filters.incident_type_id && (
-            <View style={styles.activeFilterChip}>
-              <Text style={styles.activeFilterText}>
-                {
-                  incidentTypes.find((t) => t.id === filters.incident_type_id)
-                    ?.name
-                }
-              </Text>
-              <TouchableOpacity
-                onPress={() =>
-                  setFilters({ ...filters, incident_type_id: null })
-                }
-              >
-                <Text style={styles.activeFilterRemove}>✕</Text>
-              </TouchableOpacity>
-            </View>
-          )}
           {filters.sla_breached !== null && (
             <View style={styles.activeFilterChip}>
               <Text style={styles.activeFilterText}>
-                {filters.sla_breached ? "⚠️ SLA Incumplido" : "✅ SLA OK"}
+                {filters.sla_breached ? "SLA Incumplido" : "SLA OK"}
               </Text>
               <TouchableOpacity
-                onPress={() => setFilters({ ...filters, sla_breached: null })}
+                onPress={() =>
+                  setFilters({ ...filters, sla_breached: null })
+                }
               >
                 <Text style={styles.activeFilterRemove}>✕</Text>
               </TouchableOpacity>
@@ -412,58 +349,116 @@ const TicketListScreen = () => {
             style={styles.clearFiltersButton}
             onPress={clearFilters}
           >
-            <Text style={styles.clearFiltersText}>Limpiar</Text>
+            <Text style={styles.clearFiltersText}>Limpiar todo</Text>
           </TouchableOpacity>
         </ScrollView>
       )}
 
-      {/* Toggle between Active and Closed tickets */}
-      <View style={styles.toggleContainer}>
-        <TouchableOpacity
-          style={[
-            styles.toggleButton,
-            !showClosed && styles.toggleButtonActive,
-          ]}
-          onPress={() => setShowClosed(false)}
-        >
-          <Text
-            style={[styles.toggleText, !showClosed && styles.toggleTextActive]}
-          >
-            Activos
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.toggleButton, showClosed && styles.toggleButtonActive]}
-          onPress={() => setShowClosed(true)}
-        >
-          <Text
-            style={[styles.toggleText, showClosed && styles.toggleTextActive]}
-          >
-            Historial
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <FlatList
-        data={filteredTickets}
-        renderItem={renderTicket}
-        keyExtractor={(item) => item.id.toString()}
+      {/* Lista de Tickets */}
+      <ScrollView
+        style={styles.ticketsList}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-        ListEmptyComponent={
+      >
+        {loading ? (
+          <ActivityIndicator size="large" color="#2196F3" />
+        ) : filteredTickets.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>
               {searchQuery || getActiveFiltersCount() > 0
-                ? "No se encontraron tickets"
-                : showClosed
-                ? "No hay tickets en el historial"
-                : "No hay tickets activos"}
+                ? "No se encontraron tickets con los criterios de búsqueda"
+                : "No hay tickets registrados"}
             </Text>
           </View>
-        }
-        contentContainerStyle={styles.listContent}
-      />
+        ) : (
+          filteredTickets.map((ticket) => (
+            <TouchableOpacity
+              key={ticket.id}
+              style={styles.ticketCard}
+              onPress={() =>
+                router.push({
+                  pathname: "/ticket-detail",
+                  params: { ticketId: ticket.id },
+                })
+              }
+            >
+              <View style={styles.ticketHeader}>
+                <View style={styles.ticketHeaderLeft}>
+                  <Text style={styles.ticketNumber}>{ticket.ticket_number}</Text>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      { backgroundColor: getStatusColor(ticket.status) },
+                    ]}
+                  >
+                    <Text style={styles.statusText}>
+                      {getStatusText(ticket.status)}
+                    </Text>
+                  </View>
+                </View>
+                <View
+                  style={[
+                    styles.priorityBadge,
+                    {
+                      backgroundColor: getPriorityColor(
+                        ticket.priority_level || ticket.priority_id
+                      ),
+                    },
+                  ]}
+                >
+                  <Text style={styles.priorityText}>
+                    {ticket.priority_name ||
+                      getPriorityText(ticket.priority_level || ticket.priority_id)}
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={styles.ticketTitle}>{ticket.title}</Text>
+
+              <View style={styles.ticketMeta}>
+                <Text style={styles.metaItem}>
+                  📁 {ticket.category_name || "Sin categoría"}
+                </Text>
+                {ticket.incident_type_name && (
+                  <Text style={styles.metaItem}>
+                    {getIncidentTypeIcon(ticket.incident_type_name)}{" "}
+                    {ticket.incident_type_name}
+                  </Text>
+                )}
+                {ticket.assigned_technician && (
+                  <Text style={styles.metaItem}>
+                    👤 {ticket.assigned_technician}
+                  </Text>
+                )}
+              </View>
+
+              <View style={styles.ticketFooter}>
+                <Text style={styles.footerText}>
+                  Creado:{" "}
+                  {format(new Date(ticket.created_at), "dd/MM/yyyy HH:mm", {
+                    locale: es,
+                  })}
+                </Text>
+                {ticket.resolution_time && (
+                  <Text style={styles.footerText}>
+                    Resuelto:{" "}
+                    {format(new Date(ticket.resolution_time), "dd/MM/yyyy HH:mm", {
+                      locale: es,
+                    })}
+                  </Text>
+                )}
+              </View>
+
+              {ticket.sla_breached && (
+                <View style={styles.slaWarning}>
+                  <Text style={styles.slaWarningText}>⚠️ SLA Incumplido</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          ))
+        )}
+      </ScrollView>
 
       {/* Modal de Filtros */}
       <Modal
@@ -475,13 +470,58 @@ const TicketListScreen = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Filtros</Text>
+              <Text style={styles.modalTitle}>Filtros Avanzados</Text>
               <TouchableOpacity onPress={() => setShowFilters(false)}>
                 <Text style={styles.modalClose}>✕</Text>
               </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.modalBody}>
+              {/* Estado */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterLabel}>Estado:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <TouchableOpacity
+                    style={[
+                      styles.filterChip,
+                      filters.status === null && styles.filterChipActive,
+                    ]}
+                    onPress={() => setFilters({ ...filters, status: null })}
+                  >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        filters.status === null && styles.filterChipTextActive,
+                      ]}
+                    >
+                      Todos
+                    </Text>
+                  </TouchableOpacity>
+                  {["open", "in_progress", "pending", "resolved", "closed"].map(
+                    (status) => (
+                      <TouchableOpacity
+                        key={status}
+                        style={[
+                          styles.filterChip,
+                          filters.status === status && styles.filterChipActive,
+                        ]}
+                        onPress={() => setFilters({ ...filters, status })}
+                      >
+                        <Text
+                          style={[
+                            styles.filterChipText,
+                            filters.status === status &&
+                              styles.filterChipTextActive,
+                          ]}
+                        >
+                          {getStatusText(status)}
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  )}
+                </ScrollView>
+              </View>
+
               {/* Prioridad */}
               <View style={styles.filterSection}>
                 <Text style={styles.filterLabel}>Prioridad:</Text>
@@ -489,17 +529,14 @@ const TicketListScreen = () => {
                   <TouchableOpacity
                     style={[
                       styles.filterChip,
-                      filters.priority_level === null &&
-                        styles.filterChipActive,
+                      filters.priority === null && styles.filterChipActive,
                     ]}
-                    onPress={() =>
-                      setFilters({ ...filters, priority_level: null })
-                    }
+                    onPress={() => setFilters({ ...filters, priority: null })}
                   >
                     <Text
                       style={[
                         styles.filterChipText,
-                        filters.priority_level === null &&
+                        filters.priority === null &&
                           styles.filterChipTextActive,
                       ]}
                     >
@@ -511,17 +548,14 @@ const TicketListScreen = () => {
                       key={priority}
                       style={[
                         styles.filterChip,
-                        filters.priority_level === priority &&
-                          styles.filterChipActive,
+                        filters.priority === priority && styles.filterChipActive,
                       ]}
-                      onPress={() =>
-                        setFilters({ ...filters, priority_level: priority })
-                      }
+                      onPress={() => setFilters({ ...filters, priority })}
                     >
                       <Text
                         style={[
                           styles.filterChipText,
-                          filters.priority_level === priority &&
+                          filters.priority === priority &&
                             styles.filterChipTextActive,
                         ]}
                       >
@@ -533,59 +567,53 @@ const TicketListScreen = () => {
               </View>
 
               {/* Técnico */}
-              {(isAdmin || isTechnician) && (
-                <View style={styles.filterSection}>
-                  <Text style={styles.filterLabel}>Técnico:</Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterLabel}>Técnico Asignado:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <TouchableOpacity
+                    style={[
+                      styles.filterChip,
+                      filters.assigned_to === null && styles.filterChipActive,
+                    ]}
+                    onPress={() =>
+                      setFilters({ ...filters, assigned_to: null })
+                    }
                   >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        filters.assigned_to === null &&
+                          styles.filterChipTextActive,
+                      ]}
+                    >
+                      Todos
+                    </Text>
+                  </TouchableOpacity>
+                  {technicians.map((tech) => (
                     <TouchableOpacity
+                      key={tech.user_id}
                       style={[
                         styles.filterChip,
-                        filters.assigned_to === null &&
+                        filters.assigned_to === tech.user_id &&
                           styles.filterChipActive,
                       ]}
                       onPress={() =>
-                        setFilters({ ...filters, assigned_to: null })
+                        setFilters({ ...filters, assigned_to: tech.user_id })
                       }
                     >
                       <Text
                         style={[
                           styles.filterChipText,
-                          filters.assigned_to === null &&
+                          filters.assigned_to === tech.user_id &&
                             styles.filterChipTextActive,
                         ]}
                       >
-                        Todos
+                        {tech.first_name} {tech.last_name}
                       </Text>
                     </TouchableOpacity>
-                    {technicians.map((tech) => (
-                      <TouchableOpacity
-                        key={tech.user_id}
-                        style={[
-                          styles.filterChip,
-                          filters.assigned_to === tech.user_id &&
-                            styles.filterChipActive,
-                        ]}
-                        onPress={() =>
-                          setFilters({ ...filters, assigned_to: tech.user_id })
-                        }
-                      >
-                        <Text
-                          style={[
-                            styles.filterChipText,
-                            filters.assigned_to === tech.user_id &&
-                              styles.filterChipTextActive,
-                          ]}
-                        >
-                          {tech.first_name} {tech.last_name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
+                  ))}
+                </ScrollView>
+              </View>
 
               {/* Categoría */}
               <View style={styles.filterSection}>
@@ -638,7 +666,7 @@ const TicketListScreen = () => {
 
               {/* Tipo de Incidente */}
               <View style={styles.filterSection}>
-                <Text style={styles.filterLabel}>Tipo:</Text>
+                <Text style={styles.filterLabel}>Tipo de Incidente:</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <TouchableOpacity
                     style={[
@@ -693,8 +721,7 @@ const TicketListScreen = () => {
                   <TouchableOpacity
                     style={[
                       styles.filterChip,
-                      filters.sla_breached === null &&
-                        styles.filterChipActive,
+                      filters.sla_breached === null && styles.filterChipActive,
                     ]}
                     onPress={() =>
                       setFilters({ ...filters, sla_breached: null })
@@ -713,8 +740,7 @@ const TicketListScreen = () => {
                   <TouchableOpacity
                     style={[
                       styles.filterChip,
-                      filters.sla_breached === false &&
-                        styles.filterChipActive,
+                      filters.sla_breached === false && styles.filterChipActive,
                     ]}
                     onPress={() =>
                       setFilters({ ...filters, sla_breached: false })
@@ -733,8 +759,7 @@ const TicketListScreen = () => {
                   <TouchableOpacity
                     style={[
                       styles.filterChip,
-                      filters.sla_breached === true &&
-                        styles.filterChipActive,
+                      filters.sla_breached === true && styles.filterChipActive,
                     ]}
                     onPress={() =>
                       setFilters({ ...filters, sla_breached: true })
@@ -761,11 +786,8 @@ const TicketListScreen = () => {
               >
                 <Text style={styles.clearButtonText}>Limpiar</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.applyButton}
-                onPress={applyFilters}
-              >
-                <Text style={styles.applyButtonText}>Aplicar</Text>
+              <TouchableOpacity style={styles.applyButton} onPress={applyFilters}>
+                <Text style={styles.applyButtonText}>Aplicar Filtros</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -780,155 +802,24 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f5f5f5",
   },
-  centerContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 15,
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#ddd",
+    backgroundColor: "#2196F3",
+    padding: 20,
+    paddingTop: 30,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "bold",
-    color: "#333",
-  },
-  addButton: {
-    backgroundColor: "#2196F3",
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  addButtonText: {
     color: "#fff",
-    fontWeight: "600",
-  },
-  toggleContainer: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#ddd",
-  },
-  toggleButton: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: "center",
-    backgroundColor: "#f5f5f5",
-    marginHorizontal: 5,
-    borderRadius: 8,
-  },
-  toggleButtonActive: {
-    backgroundColor: "#2196F3",
-  },
-  toggleText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
-  },
-  toggleTextActive: {
-    color: "#fff",
-  },
-  listContent: {
-    padding: 15,
-    paddingBottom: 100,
-  },
-  ticketCard: {
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  ticketHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  ticketNumber: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  ticketTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
     marginBottom: 5,
   },
-  ticketDescription: {
+  headerSubtitle: {
     fontSize: 14,
-    color: "#666",
-    marginBottom: 10,
-  },
-  ticketFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 10,
-  },
-  ticketInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  priorityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  priorityText: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  categoryText: {
-    fontSize: 12,
-    color: "#666",
-  },
-  dateText: {
-    fontSize: 12,
-    color: "#999",
-  },
-  assignedText: {
-    fontSize: 12,
-    color: "#666",
-    marginTop: 8,
-    fontStyle: "italic",
-  },
-  emptyContainer: {
-    padding: 40,
-    alignItems: "center",
-  },
-  emptyText: {
-    fontSize: 16,
-    color: "#999",
+    color: "#E3F2FD",
   },
   searchContainer: {
     flexDirection: "row",
-    padding: 10,
+    padding: 15,
     gap: 10,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
@@ -938,13 +829,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f5f5f5",
     borderRadius: 8,
-    padding: 10,
+    padding: 12,
     fontSize: 14,
   },
   filterButton: {
     backgroundColor: "#2196F3",
-    paddingHorizontal: 15,
-    paddingVertical: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     borderRadius: 8,
     justifyContent: "center",
   },
@@ -955,16 +846,16 @@ const styles = StyleSheet.create({
   },
   activeFilters: {
     backgroundColor: "#fff",
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#ddd",
   },
   activeFilterChip: {
     flexDirection: "row",
     backgroundColor: "#E3F2FD",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 16,
     marginRight: 8,
     alignItems: "center",
@@ -975,19 +866,117 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   activeFilterRemove: {
-    fontSize: 14,
+    fontSize: 16,
     color: "#1976D2",
     fontWeight: "bold",
   },
   clearFiltersButton: {
     backgroundColor: "#FF5252",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 16,
   },
   clearFiltersText: {
     fontSize: 12,
     color: "#fff",
+    fontWeight: "600",
+  },
+  ticketsList: {
+    flex: 1,
+    padding: 15,
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#999",
+    textAlign: "center",
+  },
+  ticketCard: {
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  ticketHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 10,
+  },
+  ticketHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flex: 1,
+  },
+  ticketNumber: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#2196F3",
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 11,
+    color: "#fff",
+    fontWeight: "600",
+  },
+  priorityBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  priorityText: {
+    fontSize: 11,
+    color: "#fff",
+    fontWeight: "600",
+  },
+  ticketTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 10,
+  },
+  ticketMeta: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 10,
+  },
+  metaItem: {
+    fontSize: 12,
+    color: "#666",
+  },
+  ticketFooter: {
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
+    paddingTop: 10,
+  },
+  footerText: {
+    fontSize: 11,
+    color: "#999",
+    marginBottom: 2,
+  },
+  slaWarning: {
+    backgroundColor: "#FFF3E0",
+    padding: 8,
+    borderRadius: 4,
+    marginTop: 10,
+  },
+  slaWarningText: {
+    fontSize: 12,
+    color: "#F57C00",
     fontWeight: "600",
   },
   modalOverlay: {
@@ -1088,4 +1077,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default TicketListScreen;
+export default AdvancedTicketSearchScreen;
