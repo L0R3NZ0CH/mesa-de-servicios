@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { usePermissions } from "../hooks/usePermissions";
-import { technicianService, departmentService } from "../services/api";
+import { technicianService, departmentService, categoryService } from "../services/api";
 
 const EditTechnicianScreen = () => {
   const router = useRouter();
@@ -22,6 +22,7 @@ const EditTechnicianScreen = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [departments, setDepartments] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
     specialty: "",
     schedule_start: "",
@@ -41,9 +42,10 @@ const EditTechnicianScreen = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [techResponse, deptResponse] = await Promise.all([
+      const [techResponse, deptResponse, catResponse] = await Promise.all([
         technicianService.getById(technicianId),
         departmentService.getAll(),
+        categoryService.getAll(),
       ]);
 
       if (techResponse.success && techResponse.data.technician) {
@@ -61,6 +63,10 @@ const EditTechnicianScreen = () => {
 
       if (deptResponse.success) {
         setDepartments(deptResponse.data.departments || []);
+      }
+
+      if (catResponse.success) {
+        setCategories(catResponse.data.categories || []);
       }
     } catch (error) {
       console.error("Error loading data:", error);
@@ -116,15 +122,28 @@ const EditTechnicianScreen = () => {
         <Text style={styles.title}>Editar Técnico</Text>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Especialidad *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ej: Hardware, Software, Redes"
-            value={formData.specialty}
-            onChangeText={(value) =>
-              setFormData((prev) => ({ ...prev, specialty: value }))
-            }
-          />
+          <Text style={styles.label}>Especialidad (Categoría) *</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={formData.specialty}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, specialty: value }))
+              }
+              style={styles.picker}
+            >
+              <Picker.Item label="Selecciona una categoría..." value="" />
+              {categories.map((category) => (
+                <Picker.Item
+                  key={category.id}
+                  label={category.name}
+                  value={category.name}
+                />
+              ))}
+            </Picker>
+          </View>
+          <Text style={styles.hint}>
+            La especialidad debe coincidir con una categoría de tickets
+          </Text>
         </View>
 
         <View style={styles.inputContainer}>
@@ -221,6 +240,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: "#ddd",
+  },
+  pickerContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    overflow: "hidden",
+  },
+  picker: {
+    height: 50,
+    fontSize: 16,
+  },
+  hint: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 5,
+    fontStyle: "italic",
   },
   submitButton: {
     backgroundColor: "#2196F3",

@@ -12,13 +12,14 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { usePermissions } from "../hooks/usePermissions";
-import { technicianService, departmentService } from "../services/api";
+import { technicianService, departmentService, categoryService } from "../services/api";
 
 const CreateTechnicianScreen = () => {
   const router = useRouter();
   const { can } = usePermissions();
   const [loading, setLoading] = useState(false);
   const [departments, setDepartments] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -38,17 +39,25 @@ const CreateTechnicianScreen = () => {
       router.back();
       return;
     }
-    loadDepartments();
+    loadData();
   }, []);
 
-  const loadDepartments = async () => {
+  const loadData = async () => {
     try {
-      const response = await departmentService.getAll();
-      if (response.success) {
-        setDepartments(response.data.departments || []);
+      const [deptResponse, catResponse] = await Promise.all([
+        departmentService.getAll(),
+        categoryService.getAll(),
+      ]);
+
+      if (deptResponse.success) {
+        setDepartments(deptResponse.data.departments || []);
+      }
+
+      if (catResponse.success) {
+        setCategories(catResponse.data.categories || []);
       }
     } catch (error) {
-      console.error("Error loading departments:", error);
+      console.error("Error loading data:", error);
     }
   };
 
@@ -183,15 +192,28 @@ const CreateTechnicianScreen = () => {
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Especialidad *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ej: Hardware, Software, Redes"
-            value={formData.specialty}
-            onChangeText={(value) =>
-              setFormData((prev) => ({ ...prev, specialty: value }))
-            }
-          />
+          <Text style={styles.label}>Especialidad (Categoría) *</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={formData.specialty}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, specialty: value }))
+              }
+              style={styles.picker}
+            >
+              <Picker.Item label="Selecciona una categoría..." value="" />
+              {categories.map((category) => (
+                <Picker.Item
+                  key={category.id}
+                  label={category.name}
+                  value={category.name}
+                />
+              ))}
+            </Picker>
+          </View>
+          <Text style={styles.hint}>
+            La especialidad debe coincidir con una categoría de tickets
+          </Text>
         </View>
 
         <View style={styles.inputContainer}>
@@ -293,6 +315,12 @@ const styles = StyleSheet.create({
   },
   picker: {
     height: 50,
+  },
+  hint: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 5,
+    fontStyle: "italic",
   },
   submitButton: {
     backgroundColor: "#2196F3",
