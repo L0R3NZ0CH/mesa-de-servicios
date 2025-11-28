@@ -152,6 +152,20 @@ class TicketController {
         });
       }
 
+      // Verificar permisos para técnicos
+      if (req.user.role === "technician") {
+        const isAssigned = ticket.assigned_to === req.user.id;
+        const matchesSpecialty = req.user.specialty &&
+          ticket.category_name?.toLowerCase() === req.user.specialty.toLowerCase();
+        
+        if (!isAssigned && !matchesSpecialty) {
+          return res.status(403).json({
+            success: false,
+            message: "No tiene permisos para ver este ticket",
+          });
+        }
+      }
+
       // Obtener comentarios
       const comments = await Comment.findByTicket(
         req.params.id,

@@ -143,13 +143,14 @@ export const ticketService = {
 
   uploadAttachment: async (ticketId, file) => {
     const formData = new FormData();
-    
+
     // En React Native Web, necesitamos convertir el URI a un Blob
-    if (file.uri.startsWith('blob:') || file.uri.startsWith('http')) {
+    if (file.uri.startsWith("blob:") || file.uri.startsWith("http")) {
       // Para web, fetch el blob y agregarlo como File
       const response = await fetch(file.uri);
       const blob = await response.blob();
-      const fileName = file.name || file.fileName || `attachment_${Date.now()}.jpg`;
+      const fileName =
+        file.name || file.fileName || `attachment_${Date.now()}.jpg`;
       formData.append("file", blob, fileName);
     } else {
       // Para React Native nativo
@@ -159,7 +160,7 @@ export const ticketService = {
         name: file.name || "attachment.jpg",
       });
     }
-    
+
     formData.append("ticket_id", ticketId.toString());
 
     const response = await api.post(

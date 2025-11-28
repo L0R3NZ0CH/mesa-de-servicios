@@ -108,10 +108,7 @@ const TicketDetailScreen = () => {
     // Admin puede editar cualquier ticket
     if (can.updateAnyTicket) return true;
 
-    // Técnico puede editar tickets asignados a él
-    if (can.updateAssignedTicket && ticket?.assigned_to === user?.id)
-      return true;
-
+    // Técnicos NO pueden editar tickets, solo cambiar estados
     // Usuario puede editar sus propios tickets si están abiertos
     if (ticket?.created_by === user?.id && ticket?.status === "open")
       return true;
@@ -291,8 +288,11 @@ const TicketDetailScreen = () => {
                 onPress={() => {
                   // Obtener el token y agregarlo a la URL
                   const token = getAuthToken();
-                  const baseUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
-                  const downloadUrl = `${baseUrl}/api/tickets/attachments/${attachment.id}/download?token=${encodeURIComponent(token)}`;
+                  const baseUrl =
+                    process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+                  const downloadUrl = `${baseUrl}/api/tickets/attachments/${
+                    attachment.id
+                  }/download?token=${encodeURIComponent(token)}`;
                   window.open(downloadUrl, "_blank");
                 }}
               >
