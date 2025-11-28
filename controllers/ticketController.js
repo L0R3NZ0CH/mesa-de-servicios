@@ -102,6 +102,8 @@ class TicketController {
         status: req.query.status,
         priority_id: req.query.priority_id,
         category_id: req.query.category_id,
+        incident_type_id: req.query.incident_type_id,
+        sla_breached: req.query.sla_breached,
         created_by: req.query.created_by,
         assigned_to: req.query.assigned_to,
         department_id: req.query.department_id,

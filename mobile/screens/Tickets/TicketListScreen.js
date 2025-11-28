@@ -32,7 +32,6 @@ const TicketListScreen = () => {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [showClosed, setShowClosed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [technicians, setTechnicians] = useState([]);
@@ -40,6 +39,7 @@ const TicketListScreen = () => {
   const [incidentTypes, setIncidentTypes] = useState([]);
   const [filters, setFilters] = useState({
     status: params?.filter || null,
+    status_type: "active",
     priority_level: null,
     assigned_to: null,
     category_id: null,
@@ -53,13 +53,13 @@ const TicketListScreen = () => {
 
       // Aplicar filtros avanzados
       if (filters.priority_level)
-        queryFilters.priority_level = filters.priority_level;
+        queryFilters.priority_id = filters.priority_level;
       if (filters.assigned_to) queryFilters.assigned_to = filters.assigned_to;
       if (filters.category_id) queryFilters.category_id = filters.category_id;
       if (filters.incident_type_id)
         queryFilters.incident_type_id = filters.incident_type_id;
       if (filters.sla_breached !== null)
-        queryFilters.sla_breached = filters.sla_breached;
+        queryFilters.sla_breached = filters.sla_breached ? 1 : 0;
 
       // Admin puede ver todos los tickets
       if (can.viewAllTickets) {
@@ -79,17 +79,18 @@ const TicketListScreen = () => {
         let filteredTickets = response.data.tickets || [];
 
         // Filtrar según la vista (activos o cerrados)
-        if (showClosed) {
+        if (filters.status_type === "closed") {
           // Mostrar solo cerrados y resueltos
           filteredTickets = filteredTickets.filter(
             (t) => t.status === "closed" || t.status === "resolved"
           );
-        } else {
+        } else if (filters.status_type === "active") {
           // Mostrar solo activos (open, in_progress, pending)
           filteredTickets = filteredTickets.filter(
             (t) => t.status !== "closed" && t.status !== "resolved"
           );
         }
+        // Si es "all", no filtrar por estado
 
         setTickets(filteredTickets);
       }
@@ -99,7 +100,7 @@ const TicketListScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [filters, can, user, showClosed]);
+  }, [filters, can, user]);
 
   const loadTechnicians = async () => {
     try {
@@ -154,6 +155,7 @@ const TicketListScreen = () => {
   const clearFilters = () => {
     setFilters({
       status: null,
+      status_type: "active",
       priority_level: null,
       assigned_to: null,
       category_id: null,
@@ -339,7 +341,22 @@ const TicketListScreen = () => {
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.activeFilters}
+          contentContainerStyle={styles.activeFiltersContent}
         >
+          {filters.status_type !== "active" && (
+            <View style={styles.activeFilterChip}>
+              <Text style={styles.activeFilterText}>
+                {filters.status_type === "closed" ? "📁 Historial" : "📋 Todos"}
+              </Text>
+              <TouchableOpacity
+                onPress={() =>
+                  setFilters({ ...filters, status_type: "active" })
+                }
+              >
+                <Text style={styles.activeFilterRemove}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          )}
           {filters.priority_level && (
             <View style={styles.activeFilterChip}>
               <Text style={styles.activeFilterText}>
@@ -418,33 +435,6 @@ const TicketListScreen = () => {
         </ScrollView>
       )}
 
-      {/* Toggle between Active and Closed tickets */}
-      <View style={styles.toggleContainer}>
-        <TouchableOpacity
-          style={[
-            styles.toggleButton,
-            !showClosed && styles.toggleButtonActive,
-          ]}
-          onPress={() => setShowClosed(false)}
-        >
-          <Text
-            style={[styles.toggleText, !showClosed && styles.toggleTextActive]}
-          >
-            Activos
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.toggleButton, showClosed && styles.toggleButtonActive]}
-          onPress={() => setShowClosed(true)}
-        >
-          <Text
-            style={[styles.toggleText, showClosed && styles.toggleTextActive]}
-          >
-            Historial
-          </Text>
-        </TouchableOpacity>
-      </View>
-
       <FlatList
         data={filteredTickets}
         renderItem={renderTicket}
@@ -457,7 +447,7 @@ const TicketListScreen = () => {
             <Text style={styles.emptyText}>
               {searchQuery || getActiveFiltersCount() > 0
                 ? "No se encontraron tickets"
-                : showClosed
+                : filters.status_type === "closed"
                 ? "No hay tickets en el historial"
                 : "No hay tickets activos"}
             </Text>
@@ -483,6 +473,72 @@ const TicketListScreen = () => {
             </View>
 
             <ScrollView style={styles.modalBody}>
+              {/* Estado (Activos/Historial) */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterLabel}>Estado del Ticket:</Text>
+                <View style={styles.filterRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.filterChip,
+                      filters.status_type === "active" &&
+                        styles.filterChipActive,
+                    ]}
+                    onPress={() =>
+                      setFilters({ ...filters, status_type: "active" })
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        filters.status_type === "active" &&
+                          styles.filterChipTextActive,
+                      ]}
+                    >
+                      📂 Activos
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.filterChip,
+                      filters.status_type === "closed" &&
+                        styles.filterChipActive,
+                    ]}
+                    onPress={() =>
+                      setFilters({ ...filters, status_type: "closed" })
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        filters.status_type === "closed" &&
+                          styles.filterChipTextActive,
+                      ]}
+                    >
+                      📁 Historial
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.filterChip,
+                      filters.status_type === "all" && styles.filterChipActive,
+                    ]}
+                    onPress={() =>
+                      setFilters({ ...filters, status_type: "all" })
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        filters.status_type === "all" &&
+                          styles.filterChipTextActive,
+                      ]}
+                    >
+                      📋 Todos
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
               {/* Prioridad */}
               <View style={styles.filterSection}>
                 <Text style={styles.filterLabel}>Prioridad:</Text>
@@ -949,10 +1005,14 @@ const styles = StyleSheet.create({
   },
   activeFilters: {
     backgroundColor: "#fff",
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    maxHeight: 50,
     borderBottomWidth: 1,
     borderBottomColor: "#ddd",
+  },
+  activeFiltersContent: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    alignItems: "center",
   },
   activeFilterChip: {
     flexDirection: "row",

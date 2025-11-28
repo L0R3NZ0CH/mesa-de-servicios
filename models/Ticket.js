@@ -90,11 +90,13 @@ class Ticket {
     let sql = `SELECT t.*, 
                p.name as priority_name, p.level as priority_level,
                c.name as category_name,
+               it.name as incident_type_name,
                u1.first_name as created_by_name, u1.last_name as created_by_lastname,
                u2.first_name as assigned_to_name, u2.last_name as assigned_to_lastname
                FROM tickets t
                LEFT JOIN priorities p ON t.priority_id = p.id
                LEFT JOIN categories c ON t.category_id = c.id
+               LEFT JOIN incident_types it ON t.incident_type_id = it.id
                LEFT JOIN users u1 ON t.created_by = u1.id
                LEFT JOIN users u2 ON t.assigned_to = u2.id
                WHERE 1=1`;
@@ -132,6 +134,16 @@ class Ticket {
     if (filters.category_id) {
       sql += " AND t.category_id = ?";
       params.push(filters.category_id);
+    }
+
+    if (filters.incident_type_id) {
+      sql += " AND t.incident_type_id = ?";
+      params.push(filters.incident_type_id);
+    }
+
+    if (filters.sla_breached !== undefined) {
+      sql += " AND t.sla_breached = ?";
+      params.push(filters.sla_breached ? 1 : 0);
     }
 
     if (filters.created_by && !filters.user_role) {
